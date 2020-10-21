@@ -95,7 +95,7 @@ class yoloCoreDataset(Dataset):
                 img, bbox = random_rotate(img, bbox)
             if random_random(0.2):
                 random_saturation(img)
-            if random_random()0.4:
+            if random_random(0.4):
                 img, bbox = random_shear(img, bbox)
             if random_random(0.5):
                 random_brightness(img)

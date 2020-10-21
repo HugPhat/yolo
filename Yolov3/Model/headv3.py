@@ -1,7 +1,7 @@
 from torch.autograd import Variable
 import torch.nn as nn
 import torch
-from .Utils.utils import build_targets
+from Yolov3.Utils.utils import build_targets
 
 class yoloHeadv3(nn.Module):
     def __init__(self, anchor,
@@ -104,8 +104,6 @@ class yoloHeadv3(nn.Module):
             recall = float(nCorrect / nGT) if nGT else 1
 
             precision = self.calculate_precision(nCorrect, conf)
-
-            #print(f'proposals {nProposals} | correct {nCorrect} | nGT {nGT}')
 
             # Handle masks
             mask = Variable(mask.type(BoolTensor))
