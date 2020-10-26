@@ -104,7 +104,7 @@ def clip_box(bbox, clip_box, alpha):
 
     bbox = np.hstack((x_min, y_min, x_max, y_max, bbox[:, 4:]))
 
-    delta_area = ((ar_ - bbox_area(bbox))/ar_)
+    delta_area = ((ar_ - bbox_area(bbox))/(ar_ + 1e-8))
 
     mask = (delta_area < (1 - alpha)).astype(int)
 

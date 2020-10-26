@@ -1,11 +1,8 @@
-import os
-import sys
 import random
-from copy import copy
 
 import cv2
 import numpy as np
-from PIL import Image
+
 
 import torch
 import torch.nn as nn
@@ -47,7 +44,7 @@ class yoloCoreDataset(Dataset):
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]),
         ])
-        self.denormalize_image = transforms.Compose([
+        self.denormalize = transforms.Compose([
             transforms.Normalize(
                 mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
                 std=[1/0.229, 1/0.224, 1/0.255]),
@@ -93,7 +90,11 @@ class yoloCoreDataset(Dataset):
         '''
 
         img, bbox  = self.GetData(idx)
-        
+        Name = [each[0] for each in bbox]
+        name = [self.labels.index(each[0]) for each in bbox]
+        bbox = [each[1:] for each in bbox]
+        bbox = np.asarray(bbox).astype('float32')
+        print(bbox)
         if self.argument:
             if random_random(0.3):
                 img, bbox = random_HFlip(img, bbox)
@@ -121,16 +122,13 @@ class yoloCoreDataset(Dataset):
         pad = ((pad1, pad2), (0, 0), (0, 0)) if h <= w else (
             (0, 0), (pad1, pad2), (0, 0))
         # Add padding
-        input_img = np.pad(img.copy(), pad, 'constant', constant_values=128)
+        input_img = np.pad(img.copy(), pad, 'constant', constant_values=0)
         
         padded_h, padded_w, _ = input_img.shape
 
         img = cv2.resize(input_img, self.img_shape)
 
         H, W = img.shape[:2] # new image shape
-
-        Name = [each[0] for each in bbox]
-        bbox = [each[1:] for each in bbox]
 
         bbox[0][0] = (bbox[0][0] + pad[1][0]) * 1 / (padded_w / W)
         bbox[0][1] = (bbox[0][1] + pad[0][0]) * 1 / (padded_h / H)
@@ -140,18 +138,12 @@ class yoloCoreDataset(Dataset):
         bbox = np.asarray(bbox).astype(float)
         _bbox = bbox.copy()
 
-        bbox[:, 0] = ((_bbox[:, 0] + _bbox[:, 2]) / 2)    # xc
-        bbox[:, 1] = ((_bbox[:, 1] + _bbox[:, 3]) / 2)    # yc
-        bbox[:, 2] = (_bbox[:, 2] - _bbox[:, 0])          # w
-        bbox[:, 3] = (_bbox[:, 3] - _bbox[:, 1])          # h
+        bbox[:, 0] = ((_bbox[:, 0] + _bbox[:, 2]) / 2)  * 1 / W  # xc
+        bbox[:, 1] = ((_bbox[:, 1] + _bbox[:, 3]) / 2)  * 1 / W  # yc
+        bbox[:, 2] = (_bbox[:, 2] - _bbox[:, 0])        * 1 / H  # w
+        bbox[:, 3] = (_bbox[:, 3] - _bbox[:, 1])        * 1 / H  # h
 
-        _bbox = bbox.copy()
-        bbox[:, 0] = _bbox[:, 0] * 1 / W
-        bbox[:, 2] = _bbox[:, 2] * 1 / W
-        bbox[:, 1] = _bbox[:, 1] * 1 / H
-        bbox[:, 3] = _bbox[:, 3] * 1 / H
-
-        name = np.asarray(Name)
+        name = np.asarray(name).astype('float32')
 
         name = np.expand_dims(name, axis=0)
 
@@ -166,13 +158,13 @@ class yoloCoreDataset(Dataset):
         input_img = self.transform(img.copy()).float()
         labels = labels.reshape(-1, 5)
 
-        # Fill matrix
-        filled_labels = np.zeros((self.max_objects, 5))
-        
         if self.debug:
             print(name)
             print(labels)
 
+        # Fill matrix
+        filled_labels = np.zeros((self.max_objects, 5))
+        
         if labels is not None:
             filled_labels[range(len(labels))[:self.max_objects]
                           ] = labels[:self.max_objects]
