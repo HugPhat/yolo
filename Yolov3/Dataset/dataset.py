@@ -23,13 +23,14 @@ def random_random(v=0.5):
 
 
 class yoloCoreDataset(Dataset):
-    def __init__(self,  path, # path to root dir
+    def __init__(self,  path, 
                         labels, # List of labels name 
                         img_size= 416, # fixed size image
                         debug=False, 
                         argument=True, 
                         draw=False, 
-                        max_objects=5
+                        max_objects=5,
+                        is_train=True
                         ):
         self.img_size = img_size
         self.img_shape = (img_size, img_size)
@@ -39,6 +40,7 @@ class yoloCoreDataset(Dataset):
         self.draw = draw
         self.labels = labels
         self.path = path
+        self.is_train = is_train
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(
@@ -53,27 +55,33 @@ class yoloCoreDataset(Dataset):
         
         self.rawData = self.InitDataset()
 
-    def InitDataset(self,**kwargs):
-        """[Use self.path to Init requirements for dataset]
-        
-        Returns:
-            self.rawData -> List:
-                [[image_data, label]]
+    def InitDataset(self, **kwargs):
+        """ Init and Read all file names
+
+        Args:
+            path (str): path to dataset
+
         Raises:
             NotImplementedError: [description]
+
+        Return:
+            self.rawData -> List:[[image_data, label]]
         """
-          
+       
         raise NotImplementedError()
 
     def GetData(self, index, **kwargs):
-        '''
-        * Input:
-            + index: index in list of data
-        * Output:
-            + image -> np.ndarray: image data 
-            + bbox -> np.ndarray: bounding boxes shape (num, 4)
+        """ Abstract method to get single data with yolo data
 
-        '''
+        Args:
+            index ([int]): index element 
+
+        Raises:
+            NotImplementedError: Need to implement in child class
+        Returns:
+            image: np.ndarray
+            bboxes: list
+        """
         
         raise NotImplementedError()
     

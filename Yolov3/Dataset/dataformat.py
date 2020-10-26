@@ -1,24 +1,25 @@
 import xml.etree.cElementTree as ET
 import numpy as np
 
+
 def readTxt(path):
     with open(path, 'r') as f:
         data = f.read()
     return data.split('\n')
 
-def VOC_Format(path:str):
+def ReadXML_VOC_Format(path:str):
     """ Read .XML annotation file with VOC Format 
 
-        Return: np.ndarray [[class_name, x1, y1, x2, y2],...]
+        Return: list [[class_name, x1, y1, x2, y2],...]
 
     Args:
-        path (str): [description]
+        path (str): path to xml file
     """
     tree = ET.parse(path)
     root = tree.getroot()
     list_with_all_boxes = []
     for boxes in root.iter('object'):
-        filename = root.find('filename').text
+        #filename = root.find('filename').text
         ymin, xmin, ymax, xmax = None, None, None, None
         class_name = boxes.find('name').text
         for box in boxes.findall("bndbox"):
