@@ -23,7 +23,7 @@ def random_random(v=0.5):
 
 
 class yoloCoreDataset(Dataset):
-    def __init__(self,  path, 
+    def __init__(self,  path, # path to root dir
                         labels, # List of labels name 
                         img_size= 416, # fixed size image
                         debug=False, 
@@ -38,7 +38,7 @@ class yoloCoreDataset(Dataset):
         self.debug = debug
         self.draw = draw
         self.labels = labels
-
+        self.path = path
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(
@@ -51,16 +51,18 @@ class yoloCoreDataset(Dataset):
                 std=[1/0.229, 1/0.224, 1/0.255]),
         ])
         
-        self.rawData = self.InitDataset(path)
+        self.rawData = self.InitDataset()
 
-    def InitDataset(self, path, **kwargs):
-        '''
-        * Input: 
-            + path-> string: path to data
-        * Ouput:
-            + self.rawData -> List:
+    def InitDataset(self,**kwargs):
+        """[Use self.path to Init requirements for dataset]
+        
+        Returns:
+            self.rawData -> List:
                 [[image_data, label]]
-        '''    
+        Raises:
+            NotImplementedError: [description]
+        """
+          
         raise NotImplementedError()
 
     def GetData(self, index, **kwargs):

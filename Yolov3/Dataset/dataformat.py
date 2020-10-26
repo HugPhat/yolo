@@ -1,6 +1,11 @@
 import xml.etree.cElementTree as ET
 import numpy as np
 
+def readTxt(path):
+    with open(path, 'r') as f:
+        data = f.read()
+    return data.split('\n')
+
 def VOC_Format(path:str):
     """ Read .XML annotation file with VOC Format 
 
