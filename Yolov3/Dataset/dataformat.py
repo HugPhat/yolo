@@ -19,7 +19,7 @@ def ReadXML_VOC_Format(path:str):
     root = tree.getroot()
     list_with_all_boxes = []
     for boxes in root.iter('object'):
-        #filename = root.find('filename').text
+        filename = root.find('filename').text
         ymin, xmin, ymax, xmax = None, None, None, None
         class_name = boxes.find('name').text
         for box in boxes.findall("bndbox"):
@@ -29,7 +29,7 @@ def ReadXML_VOC_Format(path:str):
             xmax = int(box.find("xmax").text)
         list_with_single_boxes = [class_name, xmin, ymin, xmax, ymax]
         list_with_all_boxes.append(list_with_single_boxes)
-    return list_with_all_boxes    
+    return list_with_all_boxes, filename  
 
 def COCO_Format(path):
     return

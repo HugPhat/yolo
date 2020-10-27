@@ -1,3 +1,4 @@
+import os
 import random
 
 import cv2
@@ -11,6 +12,8 @@ from torch.utils.data import Dataset
 
 from .data_argument import random_blur, random_brightness, random_hue,\
                  random_rotate, random_shear, random_HFlip, random_VFlip, random_scale, random_saturation
+
+import matplotlib.pyplot as plt 
 
 def random_random(v=0.5):
     if random.random() > 0.5:
@@ -27,7 +30,8 @@ class yoloCoreDataset(Dataset):
                         argument=True, 
                         draw=False, 
                         max_objects=5,
-                        is_train=True
+                        is_train=True,
+                        save_draw_images = False
                         ):
         self.img_size = img_size
         self.img_shape = (img_size, img_size)
@@ -49,8 +53,9 @@ class yoloCoreDataset(Dataset):
                 mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
                 std=[1/0.229, 1/0.224, 1/0.255]),
         ])
-        
+        self._file = os.path.dirname(__file__)
         self.rawData = self.InitDataset()
+        self.save_draw_images = save_draw_images
 
     def InitDataset(self, **kwargs):
         """ Init and Read all file names
@@ -78,6 +83,7 @@ class yoloCoreDataset(Dataset):
         Returns:
             image: np.ndarray
             bboxes: list
+            fname: name of xml file
         """
         
         raise NotImplementedError()
@@ -89,12 +95,12 @@ class yoloCoreDataset(Dataset):
         output: img:np, bbox:np, name:list
         '''
 
-        img, bbox  = self.GetData(idx)
+        img, bbox, fname  = self.GetData(idx)
         Name = [each[0] for each in bbox]
         name = [self.labels.index(each[0]) for each in bbox]
         bbox = [each[1:] for each in bbox]
         bbox = np.asarray(bbox).astype('float32')
-        print(bbox)
+
         if self.argument:
             if random_random(0.3):
                 img, bbox = random_HFlip(img, bbox)
@@ -117,12 +123,12 @@ class yoloCoreDataset(Dataset):
         #
         dim_diff = np.abs(h - w)
         # Upper (left) and lower (right) padding
-        pad1, pad2 = dim_diff // 2, dim_diff - dim_diff // 2
+        pad1, pad2 = dim_diff // 2, dim_diff // 2
         # Determine padding
         pad = ((pad1, pad2), (0, 0), (0, 0)) if h <= w else (
             (0, 0), (pad1, pad2), (0, 0))
         # Add padding
-        input_img = np.pad(img.copy(), pad, 'constant', constant_values=0)
+        input_img = np.pad(img.copy(), pad, 'constant', constant_values=150)
         
         padded_h, padded_w, _ = input_img.shape
 
@@ -130,11 +136,11 @@ class yoloCoreDataset(Dataset):
 
         H, W = img.shape[:2] # new image shape
 
-        bbox[0][0] = (bbox[0][0] + pad[1][0]) * 1 / (padded_w / W)
-        bbox[0][1] = (bbox[0][1] + pad[0][0]) * 1 / (padded_h / H)
-        bbox[0][2] = (bbox[0][2] + pad[1][0]) * 1 / (padded_w / W)
-        bbox[0][3] = (bbox[0][3] + pad[0][0]) * 1 / (padded_h / H)
-        
+        bbox[:, 0] = (bbox[:, 0] + pad[1][0]) * 1 / (padded_w / W)
+        bbox[:, 2] = (bbox[:, 2] + pad[1][0]) * 1 / (padded_w / W)
+        bbox[:, 1] = (bbox[:, 1] + pad[0][0]) * 1 / (padded_h / H)
+        bbox[:, 3] = (bbox[:, 3] + pad[0][0]) * 1 / (padded_h / H)
+
         bbox = np.asarray(bbox).astype(float)
         _bbox = bbox.copy()
 
@@ -149,6 +155,8 @@ class yoloCoreDataset(Dataset):
 
         label = np.concatenate((name.T, bbox), axis=1)
 
+        if self.draw:
+            self.drawConvertedAnnotation(img, label, fname, save=self.save_draw_images)
         return img, label, Name
 
     def __getitem__(self, index):
@@ -157,14 +165,11 @@ class yoloCoreDataset(Dataset):
 
         input_img = self.transform(img.copy()).float()
         labels = labels.reshape(-1, 5)
-
         if self.debug:
             print(name)
             print(labels)
-
         # Fill matrix
         filled_labels = np.zeros((self.max_objects, 5))
-        
         if labels is not None:
             filled_labels[range(len(labels))[:self.max_objects]
                           ] = labels[:self.max_objects]
@@ -175,3 +180,22 @@ class yoloCoreDataset(Dataset):
     def __len__(self):
         return len(self.rawData)
 
+    def drawConvertedAnnotation(self, image, labels, fname, save=False):
+        H, W = image.shape[:2]
+        t_image = image.copy()
+        for i in range(len(labels)):
+            name, xc, yc, w, h = labels[i]
+            x1 = int((xc - w/2)*W)
+            y1 = int((yc - h/2)*H)
+            x2 = int((xc + w/2)*W)
+            y2 = int((yc + h/2)*H)
+            cv2.rectangle(t_image, (x1, y1), (x2, y2), (0, 255, 255), 2, 1)
+            cv2.putText(t_image, str(self.labels[int(name)]),
+                        (x1+10, y1+10 ), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 5), 2)
+        if not save:
+            plt.imshow(t_image)
+            plt.show()
+        else:
+            t_image = cv2.cvtColor(t_image, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(os.path.join(self._file, "Test", "data", fname+'.jpg'))
+        

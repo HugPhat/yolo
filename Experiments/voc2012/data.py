@@ -20,13 +20,12 @@ class VOC_data(yoloCoreDataset):
                     max_objects=5,
                     is_train=True
                 ):
-        super(VOC_data, self).__init__(path, labels, debug=debug)
+        super(VOC_data, self).__init__(path, labels, debug=debug, is_train=is_train)
         self.debug = debug
         self.argument = argument
         self.draw = draw
         self.max_objects = max_objects
-        self.is_train = is_train
-
+        
 
     def InitDataset(self):
         """Use preset data set in ./ImageSets/Main contains [train.txt, val.txt]
@@ -50,16 +49,17 @@ class VOC_data(yoloCoreDataset):
         path_2_image, path_2_xml = self.rawData[index]
         if self.debug:
             print(f"image path {path_2_image} || xml path {path_2_xml}")
-        bboxes = ReadXML_VOC_Format(path_2_xml)
+        bboxes, fname = ReadXML_VOC_Format(path_2_xml)
         image = cv2.imread(path_2_image)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image, bboxes
+        return image, bboxes, fname
 
 if __name__ == '__main__':
     labels = readTxt(os.path.join(PATH, 'config', 'class.names'))
-    path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
+    #path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
+    path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root, labels=labels, debug=True)
+    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=False)
 
     for each in voc:
         pass
