@@ -241,7 +241,9 @@ def build_targets(
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_iou(gt_box, anchor_shapes)
             # Where the overlap is larger than ignoring threshold set mask to zero (ignore)
-            mask[b, anch_ious > ignore_thres, gj, gi] = 0
+            #
+            #mask[b, anch_ious > ignore_thres, gj, gi] = 1 # $warn
+            #
             # Find the best matching anchor box
             best_n = np.argmax(anch_ious)
             # Get ground truth box
@@ -260,6 +262,7 @@ def build_targets(
             target_label = int(target[b, t, 0])
             tcls[b, best_n, gj, gi, target_label] = 1
             tconf[b, best_n, gj, gi] = 1
+
             iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False)
             pred_label = torch.argmax(pred_cls[b, best_n, gj, gi])
             score = pred_conf[b, best_n, gj, gi]

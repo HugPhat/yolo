@@ -118,15 +118,15 @@ class yoloHeadv3(nn.Module):
 
             # Get conf mask where gt and where there is no gt
             conf_mask_true = mask
-            conf_mask_false = conf_mask  # mask ^ conf_mask
+            conf_mask_false = 1.0 - mask  # mask ^ conf_mask
 
             # Mask outputs to ignore non-existing objects
             loss_x = self.mse_loss(x[mask], tx[mask])
             loss_y = self.mse_loss(y[mask], ty[mask])
             loss_w = self.mse_loss(w[mask], tw[mask])
             loss_h = self.mse_loss(h[mask], th[mask])
-            loss_conf = self.bce_loss(conf[conf_mask_true],
-                                tconf[conf_mask_true])*self.lb_obj
+            loss_conf = self.mse_loss(conf[conf_mask_true], tconf[conf_mask_true])*self.lb_obj +\
+                            self.mse_loss(conf[conf_mask_false], tconf[conf_mask_false])*self.lb_noobj
 
             loss_cls = self.ce_loss(clss[mask], torch.argmax(tcls[mask], 1))
 
