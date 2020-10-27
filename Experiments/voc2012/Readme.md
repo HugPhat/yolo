@@ -1,3 +1,3 @@
 PASCALVOC
 
-number of class : 21
+number of class : 20

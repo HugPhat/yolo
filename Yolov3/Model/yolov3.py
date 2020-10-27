@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.transforms as transforms
 
-from headv3 import yoloHeadv3
+from .headv3 import yoloHeadv3
 
 
 class skip_connection(nn.Module):
@@ -19,9 +19,10 @@ class skip_connection(nn.Module):
 
 class yolov3(nn.Module):
     def __init__(self,
-                 device=None,
                  img_size=416,
                  debug=False,
+                 classes = 80,
+                 use_custom_config =False ,
                  config_path='config/model.cfg',
                  lb_noobj=1.0,
                  lb_obj=5.0,
@@ -34,14 +35,12 @@ class yolov3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
         self.debug = debug
-        self.layer_dict = self.get_config(config_path)
-        if device == 'cpu':
-            self.device = torch.device('cpu')
-        elif device == 'cuda':
-            self.device = torch.device('cuda:0')
+        if use_custom_config:
+            self.layer_dict = self.get_config(use_custom_config)
         else:
-            self.device = torch.device(
-                'cuda:0' if torch.cuda.is_available() else 'cpu')
+            pwd = os.path.dirname(__file__)
+            pwd = os.path.join(pwd, "yolov3.cfg")
+            self.layer_dict = self.get_default_config(pwd, classes=classes)
         self.make_nn(debug=debug)
         self.loss_names = ["x", "y", "w", "h",
                            "conf", "cls", "recall", "precision"]
@@ -209,17 +208,13 @@ class yolov3(nn.Module):
                 _from = int(layer_dict['from'])
                 x = layer_output[-1] + layer_output[_from]
             elif layer_dict['type'] == 'yolo':
-                #print(module)
                 if is_training:
                     x, *losses = module[0](x, targets)
-                    #print(x)
-                    #print(losses)
                     for name, loss in zip(self.loss_names, losses):
                         self.losses[name] += loss
                 else:
                     count += 1
                     if count:
-                        #print(f'get one at {i}')
                         x = module(x)
                 output.append(x)
 
@@ -227,7 +222,6 @@ class yolov3(nn.Module):
 
         self.losses["recall"] /= 3
         self.losses["precision"] /= 3
-        #return sum(output) if is_training else torch.cat(output, 1)
         return sum(output) if is_training else torch.cat(output, 1)
 
     def get_config(self, path):
@@ -250,7 +244,35 @@ class yolov3(nn.Module):
                 key, value = line.split("=")
                 block[key.rstrip()] = value.lstrip()
         blocks.append(block)
-
+        return blocks
+    
+    def get_default_config(self, path, classes):
+        with open(path, 'r') as cfg:
+            lines = cfg.read().split('\n')
+            if self.debug:
+                print(type(lines))
+            lines = [x for x in lines if len(x) > 0]
+            lines = [x for x in lines if x[0] != '#']
+            lines = [x.rstrip().lstrip() for x in lines]
+        block = {}
+        blocks = []
+        for line in lines:
+            if line[0] == "[":
+                if len(block) != 0:
+                    blocks.append(block)
+                    block = {}
+                block["type"] = line[1:-1].rstrip()
+            else:
+                key, value = line.split("=")
+                value = value.lstrip()
+                if value == "$filters":
+                    value = str((classes + 5) * 3)
+                elif value == "$classes":
+                    value = str(classes)
+                    
+                block[key.rstrip()] = value.lstrip()
+        blocks.append(block)
+        
         return blocks
 
     def load_weight(self, weights_path='config/yolov3_tiny.weights'):
