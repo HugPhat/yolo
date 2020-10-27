@@ -43,7 +43,7 @@ class yolov3(nn.Module):
             self.layer_dict = self.get_default_config(pwd, classes=classes)
         self.make_nn(debug=debug)
         self.loss_names = ["x", "y", "w", "h",
-                           "conf", "cls", "recall", "precision"]
+                           "object", "class", "recall", "precision"]
         self.seen = 0
         self.header = np.array([0, 0, 0, self.seen, 0])
         self.losses = defaultdict(float)

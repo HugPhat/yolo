@@ -193,14 +193,24 @@ def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
 
 
 def build_targets(
-    pred_boxes, pred_conf, pred_cls, target, anchors, num_anchors, num_classes, grid_size, ignore_thres, img_dim
-):
+                    pred_boxes, 
+                    pred_conf, 
+                    pred_cls, 
+                    target, 
+                    anchors, 
+                    num_anchors, 
+                    num_classes, 
+                    grid_size, 
+                    ignore_thres, 
+                    img_dim, 
+                    IoU_thresh = 0.5,
+                    score_thresh = 0.5
+                ):
     nB = target.size(0)
     nA = num_anchors
     nC = num_classes
     nG = grid_size
-    mask = torch.zeros(nB, nA, nG, nG)
-    conf_mask = torch.ones(nB, nA, nG, nG)
+    mask = torch.zeros(nB, nA, nG, nG).type(torch.ByteTensor)
     tx = torch.zeros(nB, nA, nG, nG)
     ty = torch.zeros(nB, nA, nG, nG)
     tw = torch.zeros(nB, nA, nG, nG)
@@ -220,11 +230,9 @@ def build_targets(
             gy = target[b, t, 2] * nG
             gw = target[b, t, 3] * nG
             gh = target[b, t, 4] * nG
-
             # Get grid box indices
             gi = int(gx) if int(gx) < nG else nG-1
             gj = int(gy) if int(gy) < nG else nG-1
-            #logging.info(f'gi {gi} gj {gj}')
             # Get shape of gt box
             gt_box = torch.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
             # Get shape of anchor box
@@ -233,42 +241,31 @@ def build_targets(
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_iou(gt_box, anchor_shapes)
             # Where the overlap is larger than ignoring threshold set mask to zero (ignore)
-            conf_mask[b, anch_ious > ignore_thres, gj, gi] = 0
-            mask[b, anch_ious > ignore_thres, gj, gi] = 1
+            mask[b, anch_ious > ignore_thres, gj, gi] = 0
             # Find the best matching anchor box
             best_n = np.argmax(anch_ious)
-            #logging.info(f'b {b} best_n {best_n}')
             # Get ground truth box
             gt_box = torch.FloatTensor(np.array([gx, gy, gw, gh])).unsqueeze(0)
             # Get the best prediction
             pred_box = pred_boxes[b, best_n, gj, gi].unsqueeze(0)
             # Masks
             mask[b, best_n, gj, gi] = 1
-            conf_mask[b, best_n, gj, gi] = 0
-            #logging.info(f'b {b}: conf_mask {conf_mask} ')
             # Coordinates
             tx[b, best_n, gj, gi] = gx - gi
             ty[b, best_n, gj, gi] = gy - gj
             # Width and height
-            tw[b, best_n, gj, gi] = math.log(gw / anchors[best_n][0] + 1e-16)
-            th[b, best_n, gj, gi] = math.log(gh / anchors[best_n][1] + 1e-16)
+            tw[b, best_n, gj, gi] = math.log(gw / (anchors[best_n][0] + 1e-16))
+            th[b, best_n, gj, gi] = math.log(gh / (anchors[best_n][1] + 1e-16))
             # One-hot encoding of label
             target_label = int(target[b, t, 0])
-            #logging.info(f'target_label {target_label}')
             tcls[b, best_n, gj, gi, target_label] = 1
             tconf[b, best_n, gj, gi] = 1
-            #logging.info(f' tcls[b, best_n, gj, gi, target_label]  {tcls[b, best_n, gj, gi,:]}')
-            # Calculate iou between ground truth and best matching prediction
             iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False)
             pred_label = torch.argmax(pred_cls[b, best_n, gj, gi])
             score = pred_conf[b, best_n, gj, gi]
-            #logging.info(
-            #    f'pred_label {pred_label},target_label {target_label}, score {score}')
-            if iou > 0.225 and pred_label == target_label and score > 0.5:
+            if iou > IoU_thresh and pred_label == target_label and score.item() > score_thresh:
                 nCorrect += 1
-    #logging.info(f'nGT {nGT} \n nCorrect {nCorrect} \n , mask {mask} \n, conf_mask {conf_mask}\n \
-    #, tx {tx}\n,  ty {ty}\n, tw {tw}\n, th {th}, tconf {tconf}, tcls {torch.max(tcls, 2)}')
-    return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls
+    return nGT, nCorrect, mask, tx, ty, tw, th, tconf, tcls
 
 
 def to_categorical(y, num_classes):
