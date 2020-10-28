@@ -13,6 +13,18 @@ class yoloHeadv3(nn.Module):
                  lb_pos=1.0,
                  ignore_thresh = 0.5,
                  ):
+        """Yolo detection layer
+
+        Args:
+            anchor ([list]): [list of anchor box]
+            num_classes ([int]): [number of training classes]
+            img_size ([int]): [fixed size image]
+            lb_noobj (float, optional): [No function at this moment]. Defaults to 1.0.
+            lb_obj (float, optional): [No function at this moment]. Defaults to 1.0.
+            lb_class (float, optional): [No function at this moment]. Defaults to 1.0.
+            lb_pos (float, optional): [No function at this moment]. Defaults to 1.0.
+            ignore_thresh (float, optional): [threshold of objecness score]. Defaults to 0.5.
+        """
         super(yoloHeadv3, self).__init__()
         self.anchor = anchor
         self.num_anchor = len(self.anchor)
@@ -26,9 +38,9 @@ class yoloHeadv3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
 
-        self.mse_loss = nn.MSELoss(size_average=True)
-        self.bce_loss = nn.BCELoss(size_average=True)
-        self.ce_loss = nn.CrossEntropyLoss()
+        #self.mse_loss = nn.MSELoss(size_average=True)
+        #self.bce_loss = nn.BCELoss(size_average=True)
+        #self.ce_loss = nn.CrossEntropyLoss()
 
         self.confidence_points = [0.5, 0.75, 0.85]
 
@@ -44,7 +56,26 @@ class yoloHeadv3(nn.Module):
         return precision
 
     def forward(self, x, targets=None):
+        """[Feed forward function]
 
+        Args:
+            x ([tensor]): [input tensor shape (batch_size, 3, img_size, img_size)]
+            targets ([tensor], optional): [tensor shape (batch_size, max_objects, 5 + number of classes)]. Defaults to None.
+
+        Returns:
+            [{
+                "mask"      : mask,
+                "x"         : [x, tx],
+                "y"         : [y, ty],
+                "w"         : [w, tw],
+                "h"         : [h, th],
+                "conf"      : [conf, tconf],
+                "class"     : [clss, tcls],
+                "recall"    : recall,
+                "precision" : precision
+            }]: [Pairs of value to calculate loss function]
+        """
+        
         isTrain = True if targets != None else False
         numBatches = x.size(0)
         numGrids = x.size(2)
@@ -117,9 +148,25 @@ class yoloHeadv3(nn.Module):
             tcls = Variable(tcls.type(LongTensor), requires_grad=False)
 
             # Get conf mask where gt and where there is no gt
-            conf_mask_true = mask
-            conf_mask_false = 1.0 - mask  # mask ^ conf_mask
-
+            #conf_mask_true = mask
+            #conf_mask_false = 1.0 - mask  # mask ^ conf_mask
+ 
+            ''' Return pairs of value:
+            '''
+            train_package = {
+                "mask"      : mask,
+                "x"         : [x, tx],
+                "y"         : [y, ty],
+                "w"         : [w, tw],
+                "h"         : [h, th],
+                "conf"      : [conf, tconf],
+                "class"     : [clss, tcls],
+                "recall"    : recall,
+                "precision" : precision
+            }
+            return train_package
+        
+            '''
             # Mask outputs to ignore non-existing objects
             loss_x = self.mse_loss(x[mask], tx[mask])
             loss_y = self.mse_loss(y[mask], ty[mask])
@@ -142,6 +189,7 @@ class yoloHeadv3(nn.Module):
                 recall,
                 precision,
             )
+        '''
         else:
             output = torch.cat(
                 (
@@ -151,4 +199,4 @@ class yoloHeadv3(nn.Module):
                 ), -1,
             )
 
-        return output
+            return output
