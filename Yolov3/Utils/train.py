@@ -11,7 +11,7 @@ from torchvision import transforms
 
 from tqdm import tqdm
 
-def unpack_data_loss_function(loss_accumulate, loss, writer, index, mode):
+def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpoint_index, mode, print_now:bool):
     """Accumulate loss value if variable exist else create dict element of [loss_accumulate] || Unpack precision || Write loss values to tensorboard
     
 
@@ -19,10 +19,12 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, index, mode):
         loss_accumulate ([dict]): [dictionary of all loss values]
         loss ([dict]): [loss values passing to loss function]
         writer ([SummaryWriter]): [tensorboard writer object]
-        index ([int]): [index of update round]
+        checkpoint_index ([int]): [checkpoint_index of update round]
         mode ([str]): [train or val]
+        print_now([bool]): [execute print log]
     """
     ##
+    
     loss_keys = list(loss.keys())
     for name_loss in loss_keys:
         if len(loss[name_loss]) == 1:
@@ -37,24 +39,29 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, index, mode):
                 except KeyError:
                     loss_accumulate.update( {name_loss + "@" + sub + "/" + mode: loss[name_loss][sub]})
     ##
+    # epoch go from 1 to dataloader_len
     
-    keys = list(loss["precision"].keys())
-    for each in keys:
-        writer.add_scalar("precision_@" + keys + "/train", loss["precision"][each], index)
+    if print_now and writer:    
+        for (name, loss_value) in loss_accumulate.items():
+            if loss_value is not dict:
+                writer.add_scalar(name, loss_value/batch_index,  checkpoint_index)
+            else:
+                for (pres, value) in loss_value.items():
+                    writer.add_scalar(pres, value/batch_index, checkpoint_index)
     
-    
+    return loss_accumulate
 
 def Train(
     model,  # yolov3
     trainLoader: DataLoader, # train: DataLoader
     valLoader : DataLoader, # val: DataLoader
     optimizer : optim, # optimizer 
-    lr_schedule,
-    warmup_schedule,
+    lr_scheduler,
+    warmup_scheduler,
     loss_function, # Loss function
     writer, # tensorboard logger 
     use_cuda: bool,
-    num_epoch : int,
+    Epochs : int,
     
 ):
     """Template Train function 
@@ -67,7 +74,7 @@ def Train(
         lr_scheduler
         warmup_schedule : [learning rate warmup]
         loss_function : [custom loss function]
-        num_epoch (int): [number of epoch]
+        Epochs (int): [number of epoch]
         use_cuda (bool): use cuda (gpu) or not
     Returns:
         [type]: [description]
@@ -87,7 +94,7 @@ def Train(
         model.cuda()
     else:
         FloatTensor = torch.FloatTensor
-    for epoch in range(1, num_epoch + 1):
+    for epoch in range(1, Epochs + 1):
         model.train()
         loss_accumulate = {}
         loss, lossX, lossY, lossW, lossH, lossConfidence, lossClass, recall, precision = 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -95,7 +102,6 @@ def Train(
             epoch_pbar.set_description(f'[Train] Epoch {epoch}')
             
             for batch_index, (input_tensor, target_tensor) in enumerate(trainLoader):
-                bidx = batch_index + 1
                 
                 input_tensor = input_tensor.type(FloatTensor)
                 target_tensor = target_tensor.type(FloatTensor)
@@ -104,29 +110,21 @@ def Train(
                 output = model(input_tensor, target_tensor) # return dictionary
                 
                 loss_set = loss_function(output)
-                
-                # split loss type
-                loss  += loss_set["loss"].item()
-                lossX += loss_set["x"]
-                lossY += loss_set["y"]
-                lossW += loss_set["w"]
-                lossH += loss_set["h"]
-                lossClass += loss_set["class"]
-                lossConfidence += loss_set["confidence"]
-                precision += loss_set["precision"]
-                recall += loss_set["recall"]
-                
-                is_best_loss = loss / bidx
+                checkpoint_index = (epoch -1)*len(trainLoader) + batch_index
+                print_now = True if (checkpoint_index + 1) % 20 == 0 else False
+                unpack_data_loss_function(loss_accumulate, loss_set, writer, batch_index + 1, checkpoint_index, 'train', print_now)
+                description = f'[Train: {epoch}/{Epochs} Epoch]: '
+                for (name, loss_value) in loss_accumulate.items():
+                    description += f"| {name.split('/')[0]} : {str(loss_value/ batch_index)} |"
+                is_best_loss = loss_accumulate['loss'] / (batch_index +1)
                 if is_best_loss < best_train_loss:
                     best_train_loss = is_best_loss
                     best_epoch = epoch
-                                    
-                writer.add_scalar('train/loss',         loss/bidx,           bidx)
-                writer.add_scalar('LossX/train',        lossX/bidx,          bidx)
-                writer.add_scalar('LossY/train',        lossY/bidx,          bidx)
-                writer.add_scalar('LossW/train',        lossW/bidx,          bidx)
-                writer.add_scalar('LossH/train',        lossH/bidx,          bidx)
-                writer.add_scalar('LossConf/train',     lossConfidence/bidx, bidx)
-                writer.add_scalar('LossClass/train',    lossClass/bidx,      bidx)
-                writer.add_scalar('Precision/train',    precision/bidx,      bidx)
-                writer.add_scalar('Recall/test',        recall/bidx,         bidx)
+                    
+                if lr_scheduler:
+                    lr_scheduler.step(epoch-1)
+                    #warmup_scheduler.dampen()
+                
+                loss_set['loss'].backward()
+                optimizer.step()
+                
