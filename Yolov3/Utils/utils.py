@@ -206,17 +206,21 @@ def build_targets(
                     IoU_thresh = 0.5,
                     score_thresh = 0.5
                 ):
+    ByteTensor = torch.cuda.ByteTensor if pred_boxes.is_cuda else torch.ByteTensor
+    FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
+
     nB = target.size(0)
     nA = num_anchors
     nC = num_classes
     nG = grid_size
-    mask = torch.zeros(nB, nA, nG, nG).type(torch.ByteTensor)
-    tx = torch.zeros(nB, nA, nG, nG)
-    ty = torch.zeros(nB, nA, nG, nG)
-    tw = torch.zeros(nB, nA, nG, nG)
-    th = torch.zeros(nB, nA, nG, nG)
-    tconf = torch.ByteTensor(nB, nA, nG, nG).fill_(0)
-    tcls = torch.ByteTensor(nB, nA, nG, nG, nC).fill_(0)
+    mask = ByteTensor.zeros(nB, nA, nG, nG).fill_(0)
+    noobj_mask = ByteTensor.zeros(nB, nA, nG, nG).fill_(1)
+    tx = FloatTensor(nB, nA, nG, nG).fill_(0)
+    ty = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tw = FloatTensor(nB, nA, nG, nG).fill_(0)
+    th = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tconf = ByteTensor(nB, nA, nG, nG).fill_(0)
+    tcls = ByteTensor(nB, nA, nG, nG, nC).fill_(0)
 
     nGT = 0
     nCorrect = 0
@@ -234,15 +238,15 @@ def build_targets(
             gi = int(gx) if int(gx) < nG else nG-1
             gj = int(gy) if int(gy) < nG else nG-1
             # Get shape of gt box
-            gt_box = torch.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
+            gt_box = FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
             # Get shape of anchor box
-            anchor_shapes = torch.FloatTensor(np.concatenate(
-                (np.zeros((len(anchors), 2)), np.array(anchors)), 1))
+            anchor_shapes = FloatTensor(torch.concatenate(
+                (FloatTensor((len(anchors), 2)).fill_(0), FloatTensor(anchors)), 1))
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_iou(gt_box, anchor_shapes)
             # Where the overlap is larger than ignoring threshold set mask to zero (ignore)
             #
-            #mask[b, anch_ious > ignore_thres, gj, gi] = 1 # $warn
+            noobj_mask[b, anch_ious > ignore_thres, gj, gi] = 0 # $warn
             #
             # Find the best matching anchor box
             best_n = np.argmax(anch_ious)
@@ -252,6 +256,7 @@ def build_targets(
             pred_box = pred_boxes[b, best_n, gj, gi].unsqueeze(0)
             # Masks
             mask[b, best_n, gj, gi] = 1
+            noobj_mask[b, best_n, gj, gi] = 0 # $warn
             # Coordinates
             tx[b, best_n, gj, gi] = gx - gi
             ty[b, best_n, gj, gi] = gy - gj
@@ -268,7 +273,7 @@ def build_targets(
             score = pred_conf[b, best_n, gj, gi]
             if iou > IoU_thresh and pred_label == target_label and score.item() > score_thresh:
                 nCorrect += 1
-    return nGT, nCorrect, mask, tx, ty, tw, th, tconf, tcls
+    return nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls
 
 
 def to_categorical(y, num_classes):

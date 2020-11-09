@@ -44,14 +44,18 @@ class yoloHeadv3(nn.Module):
 
         self.confidence_points = [0.5, 0.75, 0.85]
 
-    def calculate_precision(self, nCorrect, _tensor):
+    def calculate_precision(self, nCorrect, _tensor) -> dict:
+        """
+        Returns:
+            * {rangeA : value , rangeB: value, ...}
+        """
         precision = {}
         for each in self.confidence_points:
-            nProposals = int((_tensor > each).sum().item())
+            nProposals = int((_tensor.cpu().data > each).sum())
             if nProposals > 0:
-                precision.update({each: float(nCorrect/ nProposals)})
+                precision.append({each: float(nCorrect/ nProposals)})
             else:
-                precision.update({each: 0})
+                precision.append({each: 0})
 
         return precision
 
@@ -119,12 +123,12 @@ class yoloHeadv3(nn.Module):
                 self.bce_loss = self.bce_loss.cuda()
                 self.ce_loss = self.ce_loss.cuda()
 
-            nGT, nCorrect, mask, tx, ty, tw, th, tconf, tcls = build_targets(
-                pred_boxes=pred_boxes.cpu().data,
-                pred_conf=conf.cpu().data,
-                pred_cls=clss.cpu().data,
-                target=targets.cpu().data,
-                anchors=scale_anchors.cpu().data,
+            nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls = build_targets(
+                pred_boxes=pred_boxes,
+                pred_conf=conf,
+                pred_cls=clss,
+                target=targets,
+                anchors=scale_anchors,
                 num_anchors=self.num_anchor,
                 num_classes=self.num_classes,
                 grid_size=numGrids,
@@ -147,49 +151,33 @@ class yoloHeadv3(nn.Module):
             tconf = Variable(tconf.type(FloatTensor), requires_grad=False)
             tcls = Variable(tcls.type(LongTensor), requires_grad=False)
 
-            # Get conf mask where gt and where there is no gt
-            #conf_mask_true = mask
-            #conf_mask_false = 1.0 - mask  # mask ^ conf_mask
- 
-            ''' Return pairs of value:
-            '''
-            train_package = {
-                "mask"      : mask,
-                "x"         : [x, tx],
-                "y"         : [y, ty],
-                "w"         : [w, tw],
-                "h"         : [h, th],
-                "conf"      : [conf, tconf],
-                "class"     : [clss, tcls],
-                "recall"    : recall,
-                "precision" : precision
-            }
-            return train_package
-        
-            '''
+            
             # Mask outputs to ignore non-existing objects
             loss_x = self.mse_loss(x[mask], tx[mask])
             loss_y = self.mse_loss(y[mask], ty[mask])
             loss_w = self.mse_loss(w[mask], tw[mask])
             loss_h = self.mse_loss(h[mask], th[mask])
-            loss_conf = self.mse_loss(conf[conf_mask_true], tconf[conf_mask_true])*self.lb_obj +\
-                            self.mse_loss(conf[conf_mask_false], tconf[conf_mask_false])*self.lb_noobj
+            loss_conf = self.bce_loss(conf[mask], tconf[mask])*self.lb_obj +\
+                            self.bce_loss(conf[noobj_mask], tconf[noobj_mask])*self.lb_noobj
 
             loss_cls = self.ce_loss(clss[mask], torch.argmax(tcls[mask], 1))
 
             loss = (loss_x + loss_y + loss_w + loss_h) *self.lb_pos + loss_conf + loss_cls*self.lb_class
             return (
                 loss,
-                loss_x.item(),
-                loss_y.item(),
-                loss_w.item(),
-                loss_h.item(),
-                loss_conf.item(),
-                loss_cls.item(),
-                recall,
-                precision,
+                {
+                    "total"  : loss.item(),
+                    "loss_x" : loss_x.item(),
+                    "loss_y" : loss_y.item(),
+                    "loss_w" : loss_w.item(),
+                    "loss_h" : loss_h.item(),
+                    "loss_conf" : loss_conf.item(),
+                    "loss_class" : loss_cls.item(),
+                    "recall" : recall,
+                    **precision
+                }
             )
-        '''
+        
         else:
             output = torch.cat(
                 (

@@ -4,6 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 import torch
+from torch import FloatTensor
 import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.transforms as transforms
@@ -46,7 +47,8 @@ class yolov3(nn.Module):
                            "object", "class", "recall", "precision"]
         self.seen = 0
         self.header = np.array([0, 0, 0, self.seen, 0])
-        self.losses = defaultdict(float)
+        
+        self.losses_log = []
 
     def make_conv(self, module, block, prev, it, debug=True):
         try:
@@ -190,8 +192,7 @@ class yolov3(nn.Module):
         output = []
         layer_output = []
         if is_training:
-            for name in self.loss_names:
-                self.losses[name] = 0
+            self.losses_log = []
         count = 0
         for i, (layer_dict, module) in enumerate(zip(self.layer_dict[1:], self.yolov3)):
             t = layer_dict['type']
@@ -209,9 +210,10 @@ class yolov3(nn.Module):
                 x = layer_output[-1] + layer_output[_from]
             elif layer_dict['type'] == 'yolo':
                 if is_training:
-                    x, *losses = module[0](x, targets)
-                    for name, loss in zip(self.loss_names, losses):
-                        self.losses[name] += loss
+                    #x, *losses = module[0](x, targets)
+                    x, losses = module[0](x, targets)
+                    self.losses_log.append(losses)
+
                 else:
                     count += 1
                     if count:
@@ -220,8 +222,6 @@ class yolov3(nn.Module):
 
             layer_output.append(x)
 
-        self.losses["recall"] /= 3
-        self.losses["precision"] /= 3
         return sum(output) if is_training else torch.cat(output, 1)
 
     def get_config(self, path):
