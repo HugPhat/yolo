@@ -11,15 +11,17 @@ import torchvision.transforms as transforms
 
 from .headv3 import yoloHeadv3
 
+import gdown
+
+path_to_sota = "https://drive.google.com/uc?id=1x9irVeBbcP09FtZWJMjlIPteZwxJgSzV"
 
 class skip_connection(nn.Module):
     def __init__(self):
         super(skip_connection, self).__init__()
 
-
-
 class yolov3(nn.Module):
     def __init__(self,
+                 name='yolov3',
                  img_size=416,
                  debug=False,
                  classes = 80,
@@ -39,9 +41,9 @@ class yolov3(nn.Module):
         if use_custom_config:
             self.layer_dict = self.get_config(use_custom_config)
         else:
-            pwd = os.path.dirname(__file__)
-            pwd = os.path.join(pwd, "yolov3.cfg")
-            self.layer_dict = self.get_default_config(pwd, classes=classes)
+            self.pwd = os.path.dirname(__file__)
+            cfg = os.path.join(self.pwd, "yolov3.cfg")
+            self.layer_dict = self.get_default_config(cfg, classes=classes)
         self.make_nn(debug=debug)
         self.loss_names = ["x", "y", "w", "h",
                            "object", "class", "recall", "precision"]
@@ -49,6 +51,15 @@ class yolov3(nn.Module):
         self.header = np.array([0, 0, 0, self.seen, 0])
         
         self.losses_log = []
+        self.name = name
+        
+        ## check pretrained file
+        files = os.listdir(self.pwd)
+        if not 'yolov3.weights' in files:
+            print('Download darknet sota weights')
+            gdown.download(path_to_sota, os.path.join(self.pwd, 'yolov3.weights'), quiet=False)
+        else:
+            print('Already download pretrained weights')
 
     def make_conv(self, module, block, prev, it, debug=True):
         try:
@@ -274,8 +285,25 @@ class yolov3(nn.Module):
         blocks.append(block)
         
         return blocks
+    def load_pretrained_by_num_class(self, path=None):
+        sota = yolov3()
+        sota.load_weight(weights_path= os.path.join(self.pwd, 'yolov3.weights')) if path is None else sota.load_weight(path)
+        sota_state_dict = sota.state_dict()
+        model_state_dict = self.state_dict()
 
-    def load_weight(self, weights_path='config/yolov3_tiny.weights'):
+        layer_before_yolo = ['81', '93', '105']
+        for k, v in sota_state_dict.items():
+            _K = k.split('.')[1]
+            t = 0
+            for l in layer_before_yolo:
+                if l in _K:
+                    t+=1
+            if not t: 
+                model_state_dict.update({k : v})
+        self.load_state_dict(model_state_dict)
+        
+
+    def load_weight(self, weights_path='yolov3.weights'):
 
         with open(weights_path, 'rb') as fw:
             header = np.fromfile(fw, dtype=np.int32, count=5)

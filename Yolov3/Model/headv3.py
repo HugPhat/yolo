@@ -53,9 +53,9 @@ class yoloHeadv3(nn.Module):
         for each in self.confidence_points:
             nProposals = int((_tensor.cpu().data > each).sum())
             if nProposals > 0:
-                precision.append({each: float(nCorrect/ nProposals)})
+                precision.update({each: float(nCorrect/ nProposals)})
             else:
-                precision.append({each: 0})
+                precision.update({each: 0})
 
         return precision
 
@@ -142,6 +142,7 @@ class yoloHeadv3(nn.Module):
 
             # Handle masks
             mask = Variable(mask.type(BoolTensor))
+            noobj_mask = Variable(noobj_mask.type(BoolTensor))
             
             # Handle target variables
             tx = Variable(tx.type(FloatTensor), requires_grad=False)

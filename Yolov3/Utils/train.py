@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import torch
 import torch.nn as nn
@@ -11,9 +12,12 @@ from torchvision import transforms
 
 from tqdm import tqdm
 
+def save_model(model, path, name, epoch):
+    path = os.path.join(path, name + '_' + str(epoch) )
+    torch.save(model.state_dict(),  path)
+
 def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpoint_index, mode, print_now:bool, epoch):
     """Accumulate loss value if variable exist else create dict element of [loss_accumulate] || Unpack precision || Write loss values to tensorboard
-    
 
     Args:
         loss_accumulate ([dict]): [dictionary of all loss values]
@@ -52,36 +56,32 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpo
 
     return loss_accumulate, desc
 
-def Train(
+def train(
     model,  # yolov3
     trainLoader: DataLoader, # train: DataLoader
     valLoader : DataLoader, # val: DataLoader
     optimizer : optim, # optimizer 
-    lr_scheduler,
-    warmup_scheduler,
-    loss_function, # Loss function
+    lr_scheduler: optim.lr_scheduler,
     writer, # tensorboard logger 
     use_cuda: bool,
     Epochs : int,
-    
+    path:str
 ):
     """Template Train function 
 
-    Args:
-        model ([yolov3]): [pre defined yolov3 model]
-        trainLoader([Dataloader])
-        valLoader([Dataloader])
-        optimizer([torch.optim])
-        lr_scheduler
-        warmup_schedule : [learning rate warmup]
-        loss_function : [custom loss function]
-        Epochs (int): [number of epoch]
-        use_cuda (bool): use cuda (gpu) or not
+    Args: \n
+        model (yolov3): pre defined yolov3 model \n
+        trainLoader(Dataloader) \n
+        valLoader(Dataloader) \n
+        optimizer(torch.optim) \n
+        lr_scheduler \n
+        Epochs (int): number of epoch \n
+        use_cuda (bool): use cuda (gpu) or not \n
+        path (str) : path to save model checkpoint
     Returns:
-        [type]: [description]
+        type: description
     """
-    loss_value = 0
-    # 
+
     accuracy_array = []
     recall_array = []
     precision_array = []
@@ -92,6 +92,7 @@ def Train(
         FloatTensor = torch.FloatTensor
     for epoch in range(1, Epochs + 1):
         model.train()
+        loss_value = 0
         loss_accumulate = {}
         #loss, lossX, lossY, lossW, lossH, lossConfidence, lossClass, recall, precision = 0, 0, 0, 0, 0, 0, 0, 0, 0
         with tqdm(total = len(trainLoader)) as epoch_pbar:
@@ -124,7 +125,8 @@ def Train(
                 input_tensor = input_tensor.type(FloatTensor)
                 target_tensor = target_tensor.type(FloatTensor)    
                 # return dictionary
-                output = model(input_tensor, target_tensor)  # return loss
+                with torch.no_grad():
+                    output = model(input_tensor, target_tensor)  # return loss
                 checkpoint_index = batch_index + 1
                 write_now = (batch_index + 1) == len(valLoader)
                 loss_accumulate, desc = unpack_data_loss_function(
@@ -133,4 +135,6 @@ def Train(
                 epoch_pbar.set_description(description)
                 epoch_pbar.update(batch_index)
         
+        save_model(model, path=path, name="checkpoint_" +
+                   str(epoch)*len(trainLoader), epoch= epoch)
                 

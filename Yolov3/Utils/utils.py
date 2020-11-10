@@ -202,25 +202,24 @@ def build_targets(
                     num_classes, 
                     grid_size, 
                     ignore_thres, 
-                    img_dim, 
                     IoU_thresh = 0.5,
                     score_thresh = 0.5
                 ):
-    ByteTensor = torch.cuda.ByteTensor if pred_boxes.is_cuda else torch.ByteTensor
+    BoolTensor = torch.cuda.BoolTensor if pred_boxes.is_cuda else torch.BoolTensor
     FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
 
     nB = target.size(0)
     nA = num_anchors
     nC = num_classes
     nG = grid_size
-    mask = ByteTensor.zeros(nB, nA, nG, nG).fill_(0)
-    noobj_mask = ByteTensor.zeros(nB, nA, nG, nG).fill_(1)
+    mask = BoolTensor(nB, nA, nG, nG).fill_(0)
+    noobj_mask = BoolTensor(nB, nA, nG, nG).fill_(1)
     tx = FloatTensor(nB, nA, nG, nG).fill_(0)
     ty = FloatTensor(nB, nA, nG, nG).fill_(0)
     tw = FloatTensor(nB, nA, nG, nG).fill_(0)
     th = FloatTensor(nB, nA, nG, nG).fill_(0)
-    tconf = ByteTensor(nB, nA, nG, nG).fill_(0)
-    tcls = ByteTensor(nB, nA, nG, nG, nC).fill_(0)
+    tconf = BoolTensor(nB, nA, nG, nG).fill_(0)
+    tcls = BoolTensor(nB, nA, nG, nG, nC).fill_(0)
 
     nGT = 0
     nCorrect = 0
@@ -230,18 +229,18 @@ def build_targets(
                 continue
             nGT += 1
             # Convert to position relative to box
-            gx = target[b, t, 1] * nG
-            gy = target[b, t, 2] * nG
-            gw = target[b, t, 3] * nG
-            gh = target[b, t, 4] * nG
+            gx = target[b, t, 1].data * nG
+            gy = target[b, t, 2].data * nG
+            gw = target[b, t, 3].data * nG
+            gh = target[b, t, 4].data * nG
             # Get grid box indices
             gi = int(gx) if int(gx) < nG else nG-1
             gj = int(gy) if int(gy) < nG else nG-1
             # Get shape of gt box
-            gt_box = FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
+            gt_box = FloatTensor([0, 0, gw, gh]).unsqueeze(0)
             # Get shape of anchor box
-            anchor_shapes = FloatTensor(torch.concatenate(
-                (FloatTensor((len(anchors), 2)).fill_(0), FloatTensor(anchors)), 1))
+            anchor_shapes = FloatTensor(torch.cat(
+                (FloatTensor(len(anchors), 2).fill_(0).data, FloatTensor(anchors).data), 1))
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_iou(gt_box, anchor_shapes)
             # Where the overlap is larger than ignoring threshold set mask to zero (ignore)
@@ -249,22 +248,24 @@ def build_targets(
             noobj_mask[b, anch_ious > ignore_thres, gj, gi] = 0 # $warn
             #
             # Find the best matching anchor box
-            best_n = np.argmax(anch_ious)
+            best_n = torch.argmax(anch_ious)
             # Get ground truth box
-            gt_box = torch.FloatTensor(np.array([gx, gy, gw, gh])).unsqueeze(0)
+            gt_box = FloatTensor([gx, gy, gw, gh]).unsqueeze(0)
             # Get the best prediction
             pred_box = pred_boxes[b, best_n, gj, gi].unsqueeze(0)
             # Masks
             mask[b, best_n, gj, gi] = 1
-            noobj_mask[b, best_n, gj, gi] = 0 # $warn
+            noobj_mask[b, best_n, gj, gi] = 0
             # Coordinates
             tx[b, best_n, gj, gi] = gx - gi
             ty[b, best_n, gj, gi] = gy - gj
             # Width and height
-            tw[b, best_n, gj, gi] = math.log(gw / (anchors[best_n][0] + 1e-16))
-            th[b, best_n, gj, gi] = math.log(gh / (anchors[best_n][1] + 1e-16))
+            tw[b, best_n, gj, gi] = torch.log(
+                gw.data / (anchors[best_n.item()][0] + 1e-16))
+            th[b, best_n, gj, gi] = torch.log(
+                gh.data / (anchors[best_n.item()][1] + 1e-16))
             # One-hot encoding of label
-            target_label = int(target[b, t, 0])
+            target_label = int(target[b, t, 0].cpu().data)
             tcls[b, best_n, gj, gi, target_label] = 1
             tconf[b, best_n, gj, gi] = 1
 
@@ -275,7 +276,3 @@ def build_targets(
                 nCorrect += 1
     return nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls
 
-
-def to_categorical(y, num_classes):
-    """ 1-hot encodes a tensor """
-    return torch.from_numpy(np.eye(num_classes, dtype="uint8")[y])
