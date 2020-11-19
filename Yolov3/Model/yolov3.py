@@ -4,7 +4,6 @@ from collections import defaultdict
 import numpy as np
 
 import torch
-from torch import FloatTensor
 import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.transforms as transforms
