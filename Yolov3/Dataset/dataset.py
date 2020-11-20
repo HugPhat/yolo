@@ -10,8 +10,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 
-from .data_argument import random_blur, random_brightness, random_hue,\
-                 random_rotate, random_shear, random_HFlip, random_VFlip, random_scale, random_saturation
+from .data_argument import custom_aug
 
 import matplotlib.pyplot as plt 
 
@@ -33,6 +32,7 @@ class yoloCoreDataset(Dataset):
                         is_train=True,
                         save_draw_images = False
                         ):
+        self.image_aug = custom_aug()
         self.img_size = img_size
         self.img_shape = (img_size, img_size)
         self.argument = argument
@@ -96,28 +96,19 @@ class yoloCoreDataset(Dataset):
         '''
 
         img, bbox, fname  = self.GetData(idx)
+        if self.debug:
+            print('-> origin: {}'.format(bbox))
+
         Name = [each[0] for each in bbox]
         name = [self.labels.index(each[0]) for each in bbox]
         bbox = [each[1:] for each in bbox]
-        bbox = np.asarray(bbox).astype('float32')
+        #bbox = np.asarray(bbox).astype('float32')
 
         if self.argument:
-            if random_random(0.3):
-                img, bbox = random_HFlip(img, bbox)
-            if random_random(0.3):
-                img, bbox = random_VFlip(img, bbox)
-            if random_random(0.5):
-                random_blur(img)
-            if random_random(0.4):
-                img, bbox = random_rotate(img, bbox)
-            if random_random(0.2):
-                random_saturation(img)
-            if random_random(0.4):
-                img, bbox = random_shear(img, bbox)
-            if random_random(0.5):
-                random_brightness(img)
-            if random_random(0.24):
-                random_hue(img)
+            if random_random(0.6):
+                img, bbox = self.image_aug(img, bbox)
+            else:
+                bbox = np.asarray(bbox)
 
         h, w = img.shape[:2] 
         #
@@ -145,8 +136,8 @@ class yoloCoreDataset(Dataset):
         _bbox = bbox.copy()
 
         bbox[:, 0] = ((_bbox[:, 0] + _bbox[:, 2]) / 2)  * 1 / W  # xc
-        bbox[:, 1] = ((_bbox[:, 1] + _bbox[:, 3]) / 2)  * 1 / W  # yc
-        bbox[:, 2] = (_bbox[:, 2] - _bbox[:, 0])        * 1 / H  # w
+        bbox[:, 1] = ((_bbox[:, 1] + _bbox[:, 3]) / 2)  * 1 / H  # yc
+        bbox[:, 2] = (_bbox[:, 2] - _bbox[:, 0])        * 1 / W  # w
         bbox[:, 3] = (_bbox[:, 3] - _bbox[:, 1])        * 1 / H  # h
 
         name = np.asarray(name).astype('float32')
@@ -154,7 +145,8 @@ class yoloCoreDataset(Dataset):
         name = np.expand_dims(name, axis=0)
 
         label = np.concatenate((name.T, bbox), axis=1)
-
+        if self.debug:
+            print(f' ---> cvt label: {label}')
         if self.draw:
             self.drawConvertedAnnotation(img, label, fname, save=self.save_draw_images)
         return img, label, Name
@@ -165,9 +157,7 @@ class yoloCoreDataset(Dataset):
 
         input_img = self.transform(img.copy()).float()
         labels = labels.reshape(-1, 5)
-        if self.debug:
-            print(name)
-            print(labels)
+        
         # Fill matrix
         filled_labels = np.zeros((self.max_objects, 5))
         if labels is not None:
@@ -189,6 +179,7 @@ class yoloCoreDataset(Dataset):
             y1 = int((yc - h/2)*H)
             x2 = int((xc + w/2)*W)
             y2 = int((yc + h/2)*H)
+            print(f'pseudo {(x1, y1, x2, y2)}')
             cv2.rectangle(t_image, (x1, y1), (x2, y2), (0, 255, 255), 2, 1)
             cv2.putText(t_image, str(self.labels[int(name)]),
                         (x1+10, y1+10 ), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 5), 2)

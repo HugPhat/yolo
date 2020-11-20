@@ -56,10 +56,10 @@ class VOC_data(yoloCoreDataset):
 
 if __name__ == '__main__':
     labels = readTxt(os.path.join(PATH, 'config', 'class.names'))
-    #path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
-    path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
+    path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
+    #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=False)
+    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=True)
 
     for each in voc:
         pass

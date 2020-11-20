@@ -1,6 +1,8 @@
+import os
 import json
 import numpy as np
 import xml.etree.cElementTree as ET
+
 
 class COCO:
     def __init__(self, path_to_annot, path_to_images=None) -> None:
@@ -10,7 +12,6 @@ class COCO:
     def Init(self, path_to_annot):
         self.images = {}
         self.classes_names = {}
-        annots = {}
         # load json
         with open(path_to_annot, 'r') as f:
           data = json.load(f)
@@ -23,6 +24,9 @@ class COCO:
         for each in data["images"]:
           image_id = each["id"]
           each.pop("id")
+          if self.path_to_images:
+            each["file_name"] = os.path.join(
+                self.path_to_images, each["file_name"])
           self.images.update({image_id: each})
         # add annot to images
         for each in data["annotations"]:
@@ -30,7 +34,14 @@ class COCO:
           cat_id = each["category_id"]
           each.update({"class": self.classes_names[cat_id]})
           each.pop("image_id")
-          self.images[image_id].update(each)
+          try:
+            self.images[image_id]["annots"].append(each)
+          except:
+            self.images[image_id].update({"annots": []})
+            self.images[image_id]["annots"].append(each)
+            
+    def __len__(self):
+        return len(self.images)
 
     def __iter__(self):
       for k, v in self.images.items():
@@ -73,12 +84,11 @@ def ReadXML_VOC_Format(path:str):
         list_with_all_boxes.append(list_with_single_boxes)
     return list_with_all_boxes, filename  
 
-def COCO_Format(path_to_annot, path_to_images):
+def COCO_Format(path_to_annot, path_to_images=None):
     """ Read Annotation
 
     Args:
         path_to_annot ([str]): [path to annotation]
         path_to_images ([str]): [path to images folder]
     """
-    with open(path_to_annot, 'r') as f:
-        data = 
+    return COCO(path_to_annot, path_to_images)
