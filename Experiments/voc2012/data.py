@@ -50,6 +50,7 @@ class VOC_data(yoloCoreDataset):
         elif self.split < 1. and self.split > 0:
             trainval = 'ImageSets/Main/trainval.txt'
             images_path = readTxt(os.path.join(self.path, trainval))
+            images_path.pop(-1)
             n_imgs = len(images_path)
             ratio = int(n_imgs*self.split)
             if self.is_train:
