@@ -156,8 +156,9 @@ if __name__ == "__main__":
                              num_workers=args.num_worker,
                              drop_last=False
                             )
-    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18,
-                                           debug=False, draw=False, argument=True, is_train=False),
+    # dont use img augment for val
+    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, 
+                                           debug=False, draw=False, argument=False, is_train=False),
                              batch_size=args.batch_size,
                              shuffle=True,
                              num_workers=args.num_worker,
@@ -202,12 +203,13 @@ if __name__ == "__main__":
     list_model = os.listdir(log_folder) if os.path.exists(log_folder) else []
     # in log folder have current model and want to resume training
     if "current_checkpoint.pth" in list_model and args.to_continue:
-        checkpoint = torch.load(os.path.join(log_folder, "current_checkpoint.pth"))
+        checkpoint = torch.load(os.path.join(
+            log_folder, "current_checkpoint.pth"), map_location=torch.device('cpu'))
         yolo.load_state_dict(checkpoint['state_dict'])
         optim_name = checkpoint["optimizer_name"]
         lr_rate = checkpoint['lr']
         wd = checkpoint['wd']
-        momen = checkpoint['m'],
+        momen = checkpoint['m']
         start_epoch = checkpoint['epoch']
         if optim_name == 'sgd':
             optimizer = optim.SGD(yolo.parameters(), 
@@ -220,6 +222,12 @@ if __name__ == "__main__":
                                 lr=lr_rate,
                                 weight_decay=wd,
                                 )
+        if not args.use_cpu:
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
+
         optimizer.load_state_dict(checkpoint['optimizer'])
         print(f"Resume Trainig at Epoch {checkpoint['epoch']} ")
         writer = create_writer(log_file)

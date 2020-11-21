@@ -30,7 +30,8 @@ class yoloCoreDataset(Dataset):
                         draw=False, 
                         max_objects=10,
                         is_train=True,
-                        save_draw_images = False
+                        save_draw_images = False,
+                        split=None,
                         ):
         self.image_aug = custom_aug()
         self.img_size = img_size
@@ -42,6 +43,7 @@ class yoloCoreDataset(Dataset):
         self.labels = labels
         self.path = path
         self.is_train = is_train
+        self.split = split
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(
@@ -105,12 +107,14 @@ class yoloCoreDataset(Dataset):
         bbox = [each[1:] for each in bbox]
         #bbox = np.asarray(bbox).astype('float32')
 
-        if self.argument:
+        if self.is_train:
             #img, bbox, name = self.image_aug(img, bbox, name)
             if random_random(0.6):
                 img, bbox, name = self.image_aug(img, bbox, name)
             else:
                 bbox = np.asarray(bbox)
+        else:
+            bbox = np.asarray(bbox)
         if self.debug:
             print(f' ---> after aug: {bbox} {type(bbox)}')
 

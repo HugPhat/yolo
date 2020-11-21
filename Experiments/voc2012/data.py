@@ -18,9 +18,11 @@ class VOC_data(yoloCoreDataset):
                     argument=True,
                     draw=False,
                     max_objects=15,
-                    is_train=True
+                    is_train=True,
+                    split = None
                 ):
-        super(VOC_data, self).__init__(path, labels, debug=debug, is_train=is_train)
+        super(VOC_data, self).__init__(path, labels,
+                                       debug=debug, is_train=is_train, split=split)
         self.debug = debug
         self.argument = argument
         self.draw = draw
@@ -36,13 +38,26 @@ class VOC_data(yoloCoreDataset):
                 + Annotations
                 + JPEGImages
         """
-        train_txt = 'ImageSets/Main/train.txt'
-        val_txt = 'ImageSets/Main/val.txt'
         annotations = "Annotations"
         jpegimages = "JPEGImages"
-        images_path = train_txt if (self.is_train) else val_txt        
-        images_path = readTxt(os.path.join(self.path, images_path))
-        images_path.pop(-1)
+        if self.split is None:
+            train_txt = 'ImageSets/Main/train.txt'
+            val_txt = 'ImageSets/Main/val.txt'
+            images_path = train_txt if (self.is_train) else val_txt        
+            images_path = readTxt(os.path.join(self.path, images_path))
+            images_path.pop(-1)
+            
+        elif self.split < 1. and self.split > 0:
+            trainval = 'ImageSets/Main/trainval.txt'
+            images_path = readTxt(os.path.join(self.path, trainval))
+            n_imgs = len(images_path)
+            ratio = int(n_imgs*self.split)
+            if self.is_train:
+                images_path = images_path[:ratio]
+            else:
+                images_path = images_path[ratio:]
+        else:
+            raise f'Wrong split data {self.split}'
         # rawdata format: [path_2_image, path_2_xml]
         rawData = list()
         for each in images_path:
@@ -67,6 +82,6 @@ if __name__ == '__main__':
     path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
     #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=True)
+    voc = VOC_data(path= path_2_root,split=0.8, is_train=True, labels=labels, debug=True, draw=False, argument=True)
     for i, each in enumerate(voc):
         print(f'{i} / {len(voc)}')
