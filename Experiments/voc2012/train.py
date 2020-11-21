@@ -275,7 +275,7 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=num_steps)
     warmup_scheduler = GradualWarmupScheduler(
-        optimizer, multiplier=1, total_epoch=3, after_scheduler=lr_scheduler)
+        optimizer, multiplier=1, total_epoch=10, after_scheduler=lr_scheduler)
 
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
