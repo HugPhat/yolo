@@ -11,8 +11,9 @@ setup(
    packages=find_packages(),  # same as name
    include_package_data=True,
    install_requires=[
-       required
-   ], #external packages as dependencies
+       required 
+       
+        ], #external packages as dependencies
    scripts=[
             
            ],
