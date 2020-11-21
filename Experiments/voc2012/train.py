@@ -164,25 +164,25 @@ if __name__ == "__main__":
                              )
    
     if not args.cfg:                             
-        yolo = create_model(args.num_class,  
-                            args.lb_noobj,
-                            args.lb_obj,
-                            args.lb_clss,
-                            args.lb_pos
+        yolo = create_model(num_classes=args.num_class,
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_po=args.lb_pos
                             )
     elif args.cfg == 'default':
-        yolo = create_model(os.path.join(File_Path, 'config', 'yolov3.cfg'), 
-                            args.lb_noobj,
-                            args.lb_obj,
-                            args.lb_clss,
-                            args.lb_pos
+        yolo = create_model(use_custom_config=os.path.join(File_Path, 'config', 'yolov3.cfg'),
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_po=args.lb_pos
                             )
     else:
-        yolo = create_model(args.cfg, 
-                            args.lb_noobj,
-                            args.lb_obj,
-                            args.lb_clss,
-                            args.lb_pos
+        yolo = create_model(use_custom_config=args.cfg, 
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_po=args.lb_pos
                             )
         
         
