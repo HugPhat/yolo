@@ -224,7 +224,7 @@ if __name__ == "__main__":
         if args.use_pretrained:
             print("Loading pretrained weight")
             yolo.load_pretrained_by_num_class()
-        if args.freeze_backbone:
+        if args.use_pretrained  and args.freeze_backbone:
             grads_layer = ("81", "93", "105")
             for name, child in yolo.yolov3.named_children():
                 if not name in grads_layer:
