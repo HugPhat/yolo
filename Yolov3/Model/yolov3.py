@@ -23,7 +23,7 @@ class yolov3(nn.Module):
                  model_name='yolov3',
                  img_size=416,
                  debug=False,
-                 classes = 80,
+                 classes = 21,
                  use_custom_config =False ,
                  lb_noobj=1.0,
                  lb_obj=5.0,

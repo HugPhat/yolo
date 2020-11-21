@@ -106,6 +106,7 @@ class yoloCoreDataset(Dataset):
         #bbox = np.asarray(bbox).astype('float32')
 
         if self.argument:
+            #img, bbox, name = self.image_aug(img, bbox, name)
             if random_random(0.6):
                 img, bbox, name = self.image_aug(img, bbox, name)
             else:
