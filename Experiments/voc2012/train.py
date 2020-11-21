@@ -24,9 +24,10 @@ from Yolov3.Utils.train import train
 from model import create_model
 import data
 
+import pytorch_warmup as warmup
+
+
 # logger callback:
-
-
 def create_writer(log_saving_path):
   writer = SummaryWriter(log_dir=log_saving_path)
   print(f'log file is saved at {log_saving_path}')
@@ -137,7 +138,7 @@ if __name__ == "__main__":
                           dest='lb_clss',
                           help='lambda class lossfunciton')
     args = parser.parse_args()
-    
+    print('Initilizing..')
     ###### handle args #########
     
 
@@ -155,15 +156,16 @@ if __name__ == "__main__":
                              num_workers=args.num_worker,
                              drop_last=False
                             )
-    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=15,
+    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18,
                                            debug=False, draw=False, argument=True, is_train=False),
                              batch_size=args.batch_size,
                              shuffle=True,
                              num_workers=args.num_worker,
                              drop_last=False
                              )
-   
-    if not args.cfg:                             
+    print('Succesfully load dataset')
+    if not args.cfg:  
+        print('Succesfully load model with default config')                           
         yolo = create_model(num_classes=args.num_class,
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
@@ -171,13 +173,16 @@ if __name__ == "__main__":
                             lb_pos=args.lb_pos
                             )
     elif args.cfg == 'default':
-        yolo = create_model(None, default_cfg=os.path.join(File_Path, 'config', 'yolov3.cfg'),
+        f = os.path.join(File_Path, 'config', 'yolov3.cfg')
+        print("Succesfully load model with custom config at '{f}' ")                           
+        yolo = create_model(None, default_cfg=f,
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
                             lb_pos=args.lb_pos
                             )
     else:
+        print("Succesfully load model with custom config at '{args.cfg}' ")                           
         yolo = create_model(None, default_cfg=args.cfg, 
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
@@ -249,6 +254,13 @@ if __name__ == "__main__":
             raise f"optimizer {args.optim} is not supported"
         
         writer = create_writer(log_file)# create new log
+    #set up lr scheduler and warmup
+    print('Set up scheduler and warmup')
+    num_steps = len(trainLoader) * args.epoch
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=num_steps)
+    warmup_scheduler = warmup.UntunedLinearWarmup(optimizer)
+
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
     train(
@@ -257,7 +269,8 @@ if __name__ == "__main__":
         valLoader=valLoader,
         optimizer_name=args.optim,
         optimizer=optimizer,
-        lr_scheduler=None,
+        lr_scheduler=lr_scheduler,
+        warmup_scheduler=warmup_scheduler,
         Epochs=args.epoch,
         use_cuda= not args.use_cpu,
         writer=writer,

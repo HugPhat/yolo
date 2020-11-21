@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
-
+with open('./Yolov3/requirements.txt') as f:
+    required = f.read().splitlines()
 setup(
    name='Yolov3',
    version='1.0',
@@ -10,7 +11,7 @@ setup(
    packages=find_packages(),  # same as name
    include_package_data=True,
    install_requires=[
-
+       required
    ], #external packages as dependencies
    scripts=[
             

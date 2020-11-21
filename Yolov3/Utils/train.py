@@ -73,6 +73,7 @@ def train(
     optimizer_name:str, # 
     optimizer : optim, # optimizer 
     lr_scheduler: optim.lr_scheduler,
+    warmup_scheduler ,
     writer, # tensorboard logger 
     use_cuda: bool,
     Epochs : int,
@@ -132,11 +133,11 @@ def train(
                 description = f'[Train: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
                 epoch_pbar.update(1)
-                if lr_scheduler:
-                    lr_scheduler.step(epoch-1)
-                    #warmup_scheduler.dampen()
                 output.backward()
                 optimizer.step()
+                if lr_scheduler:
+                    lr_scheduler.step(epoch-1)
+                    warmup_scheduler.dampen()
         loss_accumulate = {}
         model.eval()
         with tqdm(total=len(valLoader)) as epoch_pbar:
@@ -148,13 +149,13 @@ def train(
                 with torch.no_grad():
                     output = model(input_tensor, target_tensor)  # return loss
                 checkpoint_index = (epoch -1)*len(valLoader) + batch_index
-                write_now = (checkpoint_index + 1) % 20 == 0
+                write_now = (batch_index + 1) == len(valLoader) 
                 loss_accumulate, desc = unpack_data_loss_function(
                     loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
-                description = f'[Validate: {epoch}/{Epochs} Epoch]: ||->{desc}<-||'
+                description = f'[Validate: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
                 epoch_pbar.update(batch_index)
-        total= loss_accumulate['loss'] / (len(valLoader))
+        total= loss_accumulate['total'] / (len(valLoader))
         if total < best_loss_value:
             save_model(model=model, path=path, name=best_current_model, 
             epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
