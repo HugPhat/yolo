@@ -118,6 +118,9 @@ class custom_aug:
         for each in bbs.bounding_boxes:
             res.append([each.x1, each.y1, each.x2, each.y2])
             _name.append(each.label)
+        if res == []:
+            res = [[0.,0.,0.,0.]]
+            _name = [0.]
         return np.asarray(res), _name
 
     def __call__(self, image: np.ndarray, bboxes:list, names:list)->list:

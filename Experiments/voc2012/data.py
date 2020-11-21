@@ -67,6 +67,6 @@ if __name__ == '__main__':
     path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
     #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=True)
-    for each in voc:
-        pass
+    voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=False, argument=True)
+    for i, each in enumerate(voc):
+        print(f'{i} / {len(voc)}')

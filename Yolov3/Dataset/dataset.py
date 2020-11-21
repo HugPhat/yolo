@@ -97,6 +97,7 @@ class yoloCoreDataset(Dataset):
 
         img, bbox, fname  = self.GetData(idx)
         if self.debug:
+            print(f'file {fname}')
             print('-> origin: {}'.format(bbox))
 
         Name = [each[0] for each in bbox]
@@ -110,7 +111,7 @@ class yoloCoreDataset(Dataset):
             else:
                 bbox = np.asarray(bbox)
         if self.debug:
-            print(f' ---> after aug: {bbox}')
+            print(f' ---> after aug: {bbox} {type(bbox)}')
 
         h, w = img.shape[:2] 
         #

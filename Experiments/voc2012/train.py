@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     labels = data.readTxt(os.path.join(File_Path, 'config', 'class.names'))
     labels.insert(0, 0)# plus 0th: background
-    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=15,
+    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18,
                                         debug=False, draw=False, argument=True, is_train=True),
                              batch_size=args.batch_size, 
                              shuffle=True, 
