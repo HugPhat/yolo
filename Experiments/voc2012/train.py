@@ -1,3 +1,4 @@
+from os.path import split
 import sys
 import os
 import shutil
@@ -71,6 +72,12 @@ if __name__ == "__main__":
                         dest='data',
                         required=True,
                         help='path to voc data folder')
+    # @@ split ratio of voc data
+    optional.add_argument('--split', action='store',
+                          default=None, type=float,
+                          dest='split',
+                          required=False,
+                          help='split ratio [0., 1.] of voc dataset (None) if not None')
     # batch size (8)                        
     optional.add_argument('--bs', action='store',
                         default=8, type=int,
@@ -149,7 +156,7 @@ if __name__ == "__main__":
 
     labels = data.readTxt(os.path.join(File_Path, 'config', 'class.names'))
     labels.insert(0, 0)# plus 0th: background
-    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18,
+    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, split=args.split,
                                         debug=False, draw=False, argument=True, is_train=True),
                              batch_size=args.batch_size, 
                              shuffle=True, 
@@ -157,7 +164,7 @@ if __name__ == "__main__":
                              drop_last=False
                             )
     # dont use img augment for val
-    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, 
+    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, , split=args.split,
                                            debug=False, draw=False, argument=False, is_train=False),
                              batch_size=args.batch_size,
                              shuffle=True,
