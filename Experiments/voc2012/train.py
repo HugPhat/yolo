@@ -25,7 +25,7 @@ from model import create_model
 import data
 
 import pytorch_warmup as warmup
-
+from warmup_scheduler import GradualWarmupScheduler
 
 # logger callback:
 def create_writer(log_saving_path):
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     num_steps = len(trainLoader) * args.epoch
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=num_steps)
-    warmup_scheduler = warmup.UntunedLinearWarmup(optimizer)
+    warmup_scheduler = GradualWarmupScheduler(optim, multiplier=1, total_epoch=3, after_scheduler=lr_scheduler)
 
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
@@ -269,7 +269,7 @@ if __name__ == "__main__":
         valLoader=valLoader,
         optimizer_name=args.optim,
         optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        lr_scheduler=None,
         warmup_scheduler=warmup_scheduler,
         Epochs=args.epoch,
         use_cuda= not args.use_cpu,

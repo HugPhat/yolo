@@ -136,8 +136,9 @@ def train(
                 output.backward()
                 optimizer.step()
                 if lr_scheduler:
-                    lr_scheduler.step(epoch-1)
-                    warmup_scheduler.dampen()
+                    lr_scheduler.step(epoch)
+                if warmup_scheduler:   
+                    warmup_scheduler.step(epoch)
         loss_accumulate = {}
         model.eval()
         with tqdm(total=len(valLoader)) as epoch_pbar:
