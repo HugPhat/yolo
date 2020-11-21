@@ -36,10 +36,10 @@ class yolov3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
         self.debug = debug
+        self.pwd = os.path.dirname(__file__)
         if use_custom_config:
             self.layer_dict = self.get_config(use_custom_config)
         else:
-            self.pwd = os.path.dirname(__file__)
             cfg = os.path.join(self.pwd, "yolov3.cfg")
             self.layer_dict = self.get_default_config(cfg, classes=classes)
         self.make_nn(debug=debug)

@@ -168,21 +168,21 @@ if __name__ == "__main__":
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_po=args.lb_pos
+                            lb_pos=args.lb_pos
                             )
     elif args.cfg == 'default':
-        yolo = create_model(use_custom_config=os.path.join(File_Path, 'config', 'yolov3.cfg'),
+        yolo = create_model(None, default_cfg=os.path.join(File_Path, 'config', 'yolov3.cfg'),
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_po=args.lb_pos
+                            lb_pos=args.lb_pos
                             )
     else:
-        yolo = create_model(use_custom_config=args.cfg, 
+        yolo = create_model(None, default_cfg=args.cfg, 
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_po=args.lb_pos
+                            lb_pos=args.lb_pos
                             )
         
         

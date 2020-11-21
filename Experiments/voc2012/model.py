@@ -24,7 +24,7 @@ def create_model(num_classes,
     Returns:
         [yolov3]: [model yolo]
     """
-    if default_cfg:
+    if not default_cfg:
         return yolov3(classes= num_classes, 
                       lb_noobj=lb_noobj,
                       lb_obj=lb_obj,
