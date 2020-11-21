@@ -164,7 +164,7 @@ if __name__ == "__main__":
                              drop_last=False
                             )
     # dont use img augment for val
-    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, , split=args.split,
+    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, split=args.split,
                                            debug=False, draw=False, argument=False, is_train=False),
                              batch_size=args.batch_size,
                              shuffle=True,
