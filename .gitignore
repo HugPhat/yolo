@@ -137,3 +137,4 @@ dmypy.json
 
 #yolo weight
 *.weights
+Experiments/voc2012/dummy
