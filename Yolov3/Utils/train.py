@@ -156,7 +156,7 @@ def train(
                 description = f'[Validate: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
                 epoch_pbar.update(batch_index)
-        total= loss_accumulate['total'] / (len(valLoader))
+        total= sum(loss_accumulate['total']) / (len(valLoader))
         if total < best_loss_value:
             save_model(model=model, path=path, name=best_current_model, 
             epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
