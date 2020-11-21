@@ -76,7 +76,7 @@ class custom_aug:
                     # change brightness of images (by -10 to 10 of original value)
                     iaa.Add((-10, 10), per_channel=0.5),
                     # change hue and saturation
-                    iaa.AddToHueAndSaturation((-20, 20)),
+                    iaa.AddToHueAndSaturation((-10, 10)),
                     # either change the brightness of the whole image (sometimes
                     # per channel) or change the brightness of subareas
                     iaa.OneOf([

@@ -12,9 +12,18 @@ from torchvision import transforms
 
 from tqdm import tqdm
 
-def save_model(model, path, name, epoch):
-    path = os.path.join(path, name + '_' + str(epoch) )
-    torch.save(model.state_dict(),  path)
+def save_model(name, model, optimizer, path, epoch, optim_name, lr_rate,wd,m):
+    checkpoint = {
+        'epoch': epoch + 1,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'optimizer_name': optim_name,
+        'lr': lr_rate,
+        'wd': wd,
+        'm':m,
+    }
+    path = os.path.join(path, name)
+    torch.save(checkpoint,  path)
 
 def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpoint_index, mode, print_now:bool, epoch):
     """Accumulate loss value if variable exist else create dict element of [loss_accumulate] || Unpack precision || Write loss values to tensorboard
@@ -41,18 +50,19 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpo
             except:
                 loss_accumulate[k].insert(order, layer[k])
     desc = ""
-    
     for (k, v) in loss_accumulate.items():
         temp = {}
-        desc += '| ' + k
+        if not k in ['loss_x', 'loss_y', 'loss_w', 'loss_h']:
+            desc += '|' + str(k) + ": " + str(round(sum(v)/ (batch_index *3), 3))
         for i, each in enumerate(v):
-            desc += str(each/batch_index) + " |"
+            #desc += str(each/batch_index) + " |"
             temp.update({'layer_' + str(i) : each/batch_index})
-        if print_now:
-            if mode == 'val':
-               writer.add_scalr(k + "/" + mode , temp, epoch)
-            else:
-                writer.add_scalr(k + "/" + mode, temp, epoch)
+            if print_now:
+                if mode == 'val':
+                    writer.add_scalar(k + '_layer_' + str(i) + "/" + mode , each/ batch_index, epoch)
+                else:
+                    writer.add_scalar(
+                        k + '_layer_' + str(i) + "/" + mode, each / batch_index, checkpoint_index)
 
     return loss_accumulate, desc
 
@@ -60,12 +70,18 @@ def train(
     model,  # yolov3
     trainLoader: DataLoader, # train: DataLoader
     valLoader : DataLoader, # val: DataLoader
+    optimizer_name:str, # 
     optimizer : optim, # optimizer 
     lr_scheduler: optim.lr_scheduler,
     writer, # tensorboard logger 
     use_cuda: bool,
     Epochs : int,
-    path:str
+    path:str,
+    lr_rate:float,
+    wd:float,# weightdecay
+    momen:float,
+    start_epoch=1,
+    
 ):
     """Template Train function 
 
@@ -82,15 +98,18 @@ def train(
         type: description
     """
 
-    accuracy_array = []
-    recall_array = []
-    precision_array = []
+    #accuracy_array = []
+    #recall_array = []
+    #precision_array = []
+    best_loss_value = 1000
+    best_current_model = 'best_model.pth'
+    
     if use_cuda:
         FloatTensor = torch.cuda.FloatTensor
         model.cuda()
     else:
         FloatTensor = torch.FloatTensor
-    for epoch in range(1, Epochs + 1):
+    for epoch in range(start_epoch, Epochs + 1):
         model.train()
         loss_value = 0
         loss_accumulate = {}
@@ -102,16 +121,17 @@ def train(
                 input_tensor = input_tensor.type(FloatTensor)
                 target_tensor = target_tensor.type(FloatTensor)
                 # zero grads
-                optimizer.zero_grads()
+                optimizer.zero_grad()
                 output = model(input_tensor, target_tensor) # return loss
-                loss_value += output.item()
+                loss_value += output.item()/3
                 checkpoint_index = (epoch -1)*len(trainLoader) + batch_index
-                write_now =  (checkpoint_index + 1) % 20 == 0 
+                write_now =  (checkpoint_index + 1) % 1 == 0  ## 1-> 20
                 loss_accumulate, desc = unpack_data_loss_function(
                     loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'train', write_now, epoch)
-                description = f'[Train: {epoch}/{Epochs} Epoch]: ||Total Loss: {loss_value/ (batch_index + 1)} ||->{desc}<-||'
+                #print(loss_accumulate['total'])
+                description = f'[Train: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
-                epoch_pbar.update(batch_index)
+                epoch_pbar.update(1)
                 if lr_scheduler:
                     lr_scheduler.step(epoch-1)
                     #warmup_scheduler.dampen()
@@ -127,14 +147,17 @@ def train(
                 # return dictionary
                 with torch.no_grad():
                     output = model(input_tensor, target_tensor)  # return loss
-                checkpoint_index = batch_index + 1
-                write_now = (batch_index + 1) == len(valLoader)
+                checkpoint_index = (epoch -1)*len(valLoader) + batch_index
+                write_now = (checkpoint_index + 1) % 20 == 0
                 loss_accumulate, desc = unpack_data_loss_function(
                     loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
                 description = f'[Validate: {epoch}/{Epochs} Epoch]: ||->{desc}<-||'
                 epoch_pbar.set_description(description)
                 epoch_pbar.update(batch_index)
+        total= loss_accumulate['loss'] / (len(valLoader))
+        if total < best_loss_value:
+            save_model(model=model, path=path, name=best_current_model, 
+            epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
+        save_model(model=model, path=path, name="current_checkpoint.pth",
+                   epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
         
-        save_model(model, path=path, name="checkpoint_" +
-                   str(epoch)*len(trainLoader), epoch= epoch)
-                

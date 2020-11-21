@@ -20,12 +20,11 @@ class skip_connection(nn.Module):
 
 class yolov3(nn.Module):
     def __init__(self,
-                 name='yolov3',
+                 model_name='yolov3',
                  img_size=416,
                  debug=False,
                  classes = 80,
                  use_custom_config =False ,
-                 config_path='config/model.cfg',
                  lb_noobj=1.0,
                  lb_obj=5.0,
                  lb_class=2.0,
@@ -50,7 +49,7 @@ class yolov3(nn.Module):
         self.header = np.array([0, 0, 0, self.seen, 0])
         
         self.losses_log = []
-        self.name = name
+        self.model_name = model_name
         
         ## check pretrained file
         files = os.listdir(self.pwd)
@@ -286,7 +285,7 @@ class yolov3(nn.Module):
         return blocks
     def load_pretrained_by_num_class(self, path=None):
         sota = yolov3()
-        sota.load_weight(weights_path= os.path.join(self.pwd, 'yolov3.weights')) if path is None else sota.load_weight(path)
+        sota._load_weight(weights_path= os.path.join(self.pwd, 'yolov3.weights')) if path is None else sota._load_weight(path)
         sota_state_dict = sota.state_dict()
         model_state_dict = self.state_dict()
 
@@ -302,7 +301,7 @@ class yolov3(nn.Module):
         self.load_state_dict(model_state_dict)
         
 
-    def load_weight(self, weights_path='yolov3.weights'):
+    def _load_weight(self, weights_path='yolov3.weights'):
 
         with open(weights_path, 'rb') as fw:
             header = np.fromfile(fw, dtype=np.int32, count=5)

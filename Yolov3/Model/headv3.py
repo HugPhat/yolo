@@ -38,9 +38,9 @@ class yoloHeadv3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
 
-        #self.mse_loss = nn.MSELoss(size_average=True)
-        #self.bce_loss = nn.BCELoss(size_average=True)
-        #self.ce_loss = nn.CrossEntropyLoss()
+        self.mse_loss = nn.MSELoss(size_average=True)
+        self.bce_loss = nn.BCELoss(size_average=True)
+        self.ce_loss = nn.CrossEntropyLoss()
 
         self.confidence_points = [0.5, 0.75, 0.85]
 
@@ -53,17 +53,17 @@ class yoloHeadv3(nn.Module):
         for each in self.confidence_points:
             nProposals = int((_tensor.cpu().data > each).sum())
             if nProposals > 0:
-                precision.update({each: float(nCorrect/ nProposals)})
+                precision.update({ 'P'+str(each): float(nCorrect/ nProposals)})
             else:
-                precision.update({each: 0})
+                precision.update({'P'+str(each): 0})
 
         return precision
 
-    def forward(self, x, targets=None):
+    def forward(self, X, targets=None):
         """[Feed forward function]
 
         Args:
-            x ([tensor]): [input tensor shape (batch_size, 3, img_size, img_size)]
+            X ([tensor]): [input tensor shape (batch_size, 3, img_size, img_size)]
             targets ([tensor], optional): [tensor shape (batch_size, max_objects, 5 + number of classes)]. Defaults to None.
 
         Returns:
@@ -81,16 +81,16 @@ class yoloHeadv3(nn.Module):
         """
         
         isTrain = True if targets != None else False
-        numBatches = x.size(0)
-        numGrids = x.size(2)
+        numBatches = X.size(0)
+        numGrids = X.size(2)
 
         ratio = self.img_size / numGrids
 
-        FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
-        LongTensor = torch.cuda.LongTensor if x.is_cuda else torch.LongTensor
-        BoolTensor = torch.cuda.BoolTensor if x.is_cuda else torch.BoolTensor
+        FloatTensor = torch.cuda.FloatTensor if X.is_cuda else torch.FloatTensor
+        LongTensor = torch.cuda.LongTensor if X.is_cuda else torch.LongTensor
+        BoolTensor = torch.cuda.BoolTensor if X.is_cuda else torch.BoolTensor
         
-        predict = x.view(numBatches, self.num_anchor,
+        predict = X.view(numBatches, self.num_anchor,
                          self.grid_info, numGrids, numGrids).permute(0, 1, 3, 4, 2).contiguous()  #
 
         x = torch.sigmoid(predict[..., 0])
@@ -119,9 +119,9 @@ class yoloHeadv3(nn.Module):
 
         if isTrain:
             if x.is_cuda:
-                self.mse_loss = self.mse_loss.cuda()
-                self.bce_loss = self.bce_loss.cuda()
-                self.ce_loss = self.ce_loss.cuda()
+                self.mse_loss.cuda()
+                self.ce_loss.cuda()
+                self.bce_loss.cuda()
 
             nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls = build_targets(
                 pred_boxes=pred_boxes,
@@ -133,11 +133,10 @@ class yoloHeadv3(nn.Module):
                 num_classes=self.num_classes,
                 grid_size=numGrids,
                 ignore_thres=self.ignore_thres,
-                img_dim=self.img_size,
+
             )
 
             recall = float(nCorrect / nGT) if nGT else 1
-
             precision = self.calculate_precision(nCorrect, conf)
 
             # Handle masks
@@ -162,12 +161,13 @@ class yoloHeadv3(nn.Module):
                             self.bce_loss(conf[noobj_mask], tconf[noobj_mask])*self.lb_noobj
 
             loss_cls = self.ce_loss(clss[mask], torch.argmax(tcls[mask], 1))
-
-            loss = (loss_x + loss_y + loss_w + loss_h) *self.lb_pos + loss_conf + loss_cls*self.lb_class
+            loss_pos = (loss_x + loss_y + loss_w + loss_h) 
+            loss = loss_pos * self.lb_pos + loss_conf + loss_cls*self.lb_class
             return (
                 loss,
                 {
                     "total"  : loss.item(),
+                    "loss_pos": loss_pos.item(),
                     "loss_x" : loss_x.item(),
                     "loss_y" : loss_y.item(),
                     "loss_w" : loss_w.item(),

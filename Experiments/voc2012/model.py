@@ -8,7 +8,17 @@ import torch
 from Yolov3.Model.yolov3 import yolov3
 
 
-def create_model(num_classes ):
-    return yolov3(classes= num_classes).load_pretrained_by_num_class()
+def create_model(num_classes, default_cfg:str = None ):
+    """[Create yolo model]
 
-(create_model(20))
+    Args:
+        num_classes (int): [number of class when using default config]
+        default_cfg (str, None): [path to custom config]. Defaults to None.
+
+    Returns:
+        [yolov3]: [model yolo]
+    """
+    if default_cfg:
+        return yolov3(classes= num_classes)
+    else:
+        return yolov3(use_custom_config=default_cfg)

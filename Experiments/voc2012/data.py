@@ -28,7 +28,13 @@ class VOC_data(yoloCoreDataset):
         
 
     def InitDataset(self):
-        """Use preset data set in ./ImageSets/Main contains [train.txt, val.txt]
+        """Use preset data set in './ImageSets/Main' contains [train.txt, val.txt]
+            +data root:
+                + /ImageSets/Main:
+                                + train.txt
+                                + val.txt
+                + Annotations
+                + JPEGImages
         """
         train_txt = 'ImageSets/Main/train.txt'
         val_txt = 'ImageSets/Main/val.txt'
