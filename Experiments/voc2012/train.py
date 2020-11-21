@@ -165,7 +165,7 @@ if __name__ == "__main__":
                              )
     print('Succesfully load dataset')
     if not args.cfg:  
-        print('Succesfully load model with default config')                           
+        print(f'Succesfully load model with default config')                           
         yolo = create_model(num_classes=args.num_class,
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
@@ -174,7 +174,7 @@ if __name__ == "__main__":
                             )
     elif args.cfg == 'default':
         f = os.path.join(File_Path, 'config', 'yolov3.cfg')
-        print("Succesfully load model with custom config at '{f}' ")                           
+        print(f"Succesfully load model with custom config at '{f}' ")                           
         yolo = create_model(None, default_cfg=f,
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                             lb_pos=args.lb_pos
                             )
     else:
-        print("Succesfully load model with custom config at '{args.cfg}' ")                           
+        print(f"Succesfully load model with custom config at '{args.cfg}' ")                           
         yolo = create_model(None, default_cfg=args.cfg, 
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
