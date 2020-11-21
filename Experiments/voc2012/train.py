@@ -61,9 +61,9 @@ if __name__ == "__main__":
                         help='use custom config, if use, pass the path of custom cfg file, default is (./config/yolov3.cfg) ')
     # number of class
     optional.add_argument('--ncl', action='store',
-                        default=20, type=int,
+                        default=21, type=int,
                         dest='num_class',
-                        help='number of annot classes (20)')
+                        help='number of annot classes (21)')
     # @@ path to voc data
     required.add_argument('--data', action='store',
                         default=None,
@@ -116,6 +116,26 @@ if __name__ == "__main__":
                         default="checkpoint", type=str,
                         dest='log_path',
                         help='path to save chkpoint and log (./checkpoint)')
+    # lambda Objectness
+    optional.add_argument('--lo', action='store',
+                          default=2.0, type=float,
+                          dest='lb_obj',
+                          help='lambda objectness lossfunciton')
+    # lambda NoObj
+    optional.add_argument('--lno', action='store',
+                          default=0.5, type=float,
+                          dest='lb_noobj',
+                          help='lambda objectless lossfunciton')
+    # lambda position
+    optional.add_argument('--lpo', action='store',
+                          default=1.0, type=float,
+                          dest='lb_pos',
+                          help='lambda position lossfunciton')
+    # lambda class
+    optional.add_argument('--lcl', action='store',
+                          default=1.0, type=float,
+                          dest='lb_clss',
+                          help='lambda class lossfunciton')
     args = parser.parse_args()
     
     ###### handle args #########
@@ -127,27 +147,43 @@ if __name__ == "__main__":
     
 
     labels = data.readTxt(os.path.join(File_Path, 'config', 'class.names'))
-
-    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels,
+    labels.insert(0, 0)# plus 0th: background
+    trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=15,
                                         debug=False, draw=False, argument=True, is_train=True),
                              batch_size=args.batch_size, 
                              shuffle=True, 
                              num_workers=args.num_worker,
                              drop_last=False
                             )
-    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels,
+    valLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=15,
                                            debug=False, draw=False, argument=True, is_train=False),
                              batch_size=args.batch_size,
                              shuffle=True,
                              num_workers=args.num_worker,
                              drop_last=False
                              )
+   
     if not args.cfg:                             
-        yolo = create_model(args.num_class)
+        yolo = create_model(args.num_class,  
+                            args.lb_noobj,
+                            args.lb_obj,
+                            args.lb_clss,
+                            args.lb_pos
+                            )
     elif args.cfg == 'default':
-        yolo = create_model(os.path.join(File_Path, 'config', 'yolov3.cfg'))
+        yolo = create_model(os.path.join(File_Path, 'config', 'yolov3.cfg'), 
+                            args.lb_noobj,
+                            args.lb_obj,
+                            args.lb_clss,
+                            args.lb_pos
+                            )
     else:
-        yolo = create_model(args.cfg)
+        yolo = create_model(args.cfg, 
+                            args.lb_noobj,
+                            args.lb_obj,
+                            args.lb_clss,
+                            args.lb_pos
+                            )
         
         
     if args.log_path == "checkpoint":

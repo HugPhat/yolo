@@ -17,7 +17,7 @@ class VOC_data(yoloCoreDataset):
                     debug=False,
                     argument=True,
                     draw=False,
-                    max_objects=5,
+                    max_objects=15,
                     is_train=True
                 ):
         super(VOC_data, self).__init__(path, labels, debug=debug, is_train=is_train)
@@ -61,11 +61,12 @@ class VOC_data(yoloCoreDataset):
         return image, bboxes, fname
 
 if __name__ == '__main__':
+
     labels = readTxt(os.path.join(PATH, 'config', 'class.names'))
+    labels.insert(0,0)
     path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
     #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
     voc = VOC_data(path= path_2_root, labels=labels, debug=True, draw=True, argument=True)
-
     for each in voc:
         pass

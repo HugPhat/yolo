@@ -103,29 +103,31 @@ class custom_aug:
             random_order=True
         )
     
-    def to_imgaug_format(self, bboxes: list, shape:list) -> BoundingBoxesOnImage:
+    def to_imgaug_format(self, bboxes: list, names: list, shape:list) -> BoundingBoxesOnImage:
         bbox_on_image = []
-        for bbox in bboxes:
+        for n, bbox in zip(names, bboxes):
             x1, y1, x2, y2 = bbox
-            bbox_on_image.append(BoundingBox(x1, y1, x2, y2))
+            bbox_on_image.append(BoundingBox(x1, y1, x2, y2, n))
         bbs = BoundingBoxesOnImage(bbox_on_image, shape=shape)
 
         return bbs
 
     def to_numpy(self, bbs)->np.ndarray:
         res = []
+        _name = []
         for each in bbs.bounding_boxes:
             res.append([each.x1, each.y1, each.x2, each.y2])
-        return np.asarray(res)
+            _name.append(each.label)
+        return np.asarray(res), _name
 
-    def __call__(self, image: np.ndarray, bboxes:list)->list:
-        bbs = self.to_imgaug_format(bboxes, image.shape)
+    def __call__(self, image: np.ndarray, bboxes:list, names:list)->list:
+        bbs = self.to_imgaug_format(bboxes, names, image.shape)
 
         images_aug, bbs_aug = self.main_seq(image=image, bounding_boxes=bbs)
         
         clipped_bbs = bbs_aug.remove_out_of_image().clip_out_of_image()
-
-        return images_aug, self.to_numpy(clipped_bbs)
+        bbox, lb = self.to_numpy(clipped_bbs)
+        return images_aug, bbox, lb
         
 
 

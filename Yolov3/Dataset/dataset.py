@@ -28,7 +28,7 @@ class yoloCoreDataset(Dataset):
                         debug=False, 
                         argument=True, 
                         draw=False, 
-                        max_objects=5,
+                        max_objects=10,
                         is_train=True,
                         save_draw_images = False
                         ):
@@ -106,9 +106,11 @@ class yoloCoreDataset(Dataset):
 
         if self.argument:
             if random_random(0.6):
-                img, bbox = self.image_aug(img, bbox)
+                img, bbox, name = self.image_aug(img, bbox, name)
             else:
                 bbox = np.asarray(bbox)
+        if self.debug:
+            print(f' ---> after aug: {bbox}')
 
         h, w = img.shape[:2] 
         #
@@ -164,7 +166,8 @@ class yoloCoreDataset(Dataset):
             filled_labels[range(len(labels))[:self.max_objects]
                           ] = labels[:self.max_objects]
         filled_labels = torch.from_numpy(filled_labels)
-
+        if self.debug:
+            print('final label ', filled_labels)
         return input_img, filled_labels
 
     def __len__(self):

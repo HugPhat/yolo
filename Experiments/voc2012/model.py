@@ -8,7 +8,13 @@ import torch
 from Yolov3.Model.yolov3 import yolov3
 
 
-def create_model(num_classes, default_cfg:str = None ):
+def create_model(num_classes, 
+        default_cfg:str = None ,
+        lb_noobj = 1.0,
+        lb_obj=5.0,
+        lb_class=2.0,
+        lb_pos=1.0
+    ):
     """[Create yolo model]
 
     Args:
@@ -19,6 +25,14 @@ def create_model(num_classes, default_cfg:str = None ):
         [yolov3]: [model yolo]
     """
     if default_cfg:
-        return yolov3(classes= num_classes)
+        return yolov3(classes= num_classes, 
+                      lb_noobj=1.0,
+                      lb_obj=5.0,
+                      lb_class=2.0,
+                      lb_pos=1.0)
     else:
-        return yolov3(use_custom_config=default_cfg)
+        return yolov3(use_custom_config=default_cfg, 
+                      lb_noobj=1.0,
+                      lb_obj=5.0,
+                      lb_class=2.0,
+                      lb_pos=1.0)
