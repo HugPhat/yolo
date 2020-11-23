@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from torchvision import datasets
@@ -12,7 +13,7 @@ from torchvision import transforms
 
 from tqdm import tqdm
 
-def save_model(name, model, optimizer, path, epoch, optim_name, lr_rate,wd,m):
+def save_model(name, model, optimizer, path, epoch, optim_name, lr_rate,wd,m, lr_scheduler):
     checkpoint = {
         'epoch': epoch + 1,
         'state_dict': model.state_dict(),
@@ -21,6 +22,7 @@ def save_model(name, model, optimizer, path, epoch, optim_name, lr_rate,wd,m):
         'lr': lr_rate,
         'wd': wd,
         'm':m,
+        'sche': lr_scheduler.state_dict() if lr_scheduler else None,
     }
     path = os.path.join(path, name)
     torch.save(checkpoint,  path)
@@ -155,11 +157,11 @@ def train(
                     loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
                 description = f'[Validate: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
-                epoch_pbar.update(batch_index)
+                epoch_pbar.update(1)
         total= sum(loss_accumulate['total']) / (len(valLoader))
         if total < best_loss_value:
             save_model(model=model, path=path, name=best_current_model, 
-            epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
+            epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
         save_model(model=model, path=path, name="current_checkpoint.pth",
-                   epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen)
+                   epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
         

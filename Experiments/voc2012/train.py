@@ -66,6 +66,11 @@ if __name__ == "__main__":
                         default=21, type=int,
                         dest='num_class',
                         help='number of annot classes (21)')
+    # number of class
+    optional.add_argument('--sch', action='store_true',
+                          default=False, 
+                          dest='use_scheduler',
+                          help='set it to turn on using scheduler (False)')
     # @@ path to voc data
     required.add_argument('--data', action='store',
                         default=None,
@@ -128,22 +133,22 @@ if __name__ == "__main__":
     optional.add_argument('--lo', action='store',
                           default=2.0, type=float,
                           dest='lb_obj',
-                          help='lambda objectness lossfunciton')
+                          help='lambda objectness lossfunciton (2.0)')
     # lambda NoObj
     optional.add_argument('--lno', action='store',
                           default=0.5, type=float,
                           dest='lb_noobj',
-                          help='lambda objectless lossfunciton')
+                          help='lambda objectless lossfunciton (0.5)')
     # lambda position
     optional.add_argument('--lpo', action='store',
                           default=1.0, type=float,
                           dest='lb_pos',
-                          help='lambda position lossfunciton')
+                          help='lambda position lossfunciton (1.)')
     # lambda class
     optional.add_argument('--lcl', action='store',
                           default=1.0, type=float,
                           dest='lb_clss',
-                          help='lambda class lossfunciton')
+                          help='lambda class lossfunciton (1.)')
     args = parser.parse_args()
     print('Initilizing..')
     ###### handle args #########
@@ -171,6 +176,11 @@ if __name__ == "__main__":
                              num_workers=args.num_worker,
                              drop_last=False
                              )
+    
+    num_steps = len(trainLoader) * args.epoch
+    lr_scheduler = None
+    warmup_scheduler = None
+
     print('Succesfully load dataset')
     if not args.cfg:  
         print(f'Succesfully load model with default config')                           
@@ -229,13 +239,23 @@ if __name__ == "__main__":
                                 lr=lr_rate,
                                 weight_decay=wd,
                                 )
+        optimizer.load_state_dict(checkpoint['optimizer'])
         if not args.use_cpu:
             for state in optimizer.state.values():
                 for k, v in state.items():
                     if isinstance(v, torch.Tensor):
                         state[k] = v.cuda()
+        sche_sd = checkpoint['sche']
+        if sche_sd:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=num_steps)
+            lr_scheduler.load_state_dict(sche_sd)
+            if not args.use_cpu:
+                for state in lr_scheduler.state.values():
+                    for k, v in state.items():
+                        if isinstance(v, torch.Tensor):
+                            state[k] = v.cuda()
 
-        optimizer.load_state_dict(checkpoint['optimizer'])
         print(f"Resume Trainig at Epoch {checkpoint['epoch']} ")
         writer = create_writer(log_file)
         
@@ -271,11 +291,12 @@ if __name__ == "__main__":
         writer = create_writer(log_file)# create new log
     #set up lr scheduler and warmup
     print('Set up scheduler and warmup')
-    num_steps = len(trainLoader) * args.epoch
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=num_steps)
-    warmup_scheduler = GradualWarmupScheduler(
-        optimizer, multiplier=1, total_epoch=10, after_scheduler=lr_scheduler)
+    #num_steps = len(trainLoader) * args.epoch # move to line 174
+    if not lr_scheduler and args.use_scheduler:
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=num_steps)
+        warmup_scheduler = GradualWarmupScheduler(
+            optimizer, multiplier=1, total_epoch=10, after_scheduler=lr_scheduler)
 
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
@@ -285,7 +306,7 @@ if __name__ == "__main__":
         valLoader=valLoader,
         optimizer_name=args.optim,
         optimizer=optimizer,
-        lr_scheduler=None,
+        lr_scheduler=lr_scheduler,
         warmup_scheduler=warmup_scheduler,
         Epochs=args.epoch,
         use_cuda= not args.use_cpu,
