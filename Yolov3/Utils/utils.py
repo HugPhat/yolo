@@ -120,7 +120,7 @@ def bbox_iou_numpy(box1, box2):
 
     intersection = iw * ih
 
-    return intersection / ua
+    return intersection / (ua + 1e-16)
 
 
 def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
