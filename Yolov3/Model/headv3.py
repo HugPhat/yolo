@@ -38,8 +38,8 @@ class yoloHeadv3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
 
-        self.mse_loss = nn.MSELoss(size_average=True)
-        self.bce_loss = nn.BCELoss(size_average=True)
+        self.mse_loss = nn.MSELoss()
+        self.bce_loss = nn.BCELoss()
         self.ce_loss = nn.CrossEntropyLoss()
 
         self.confidence_points = [0.5, 0.75, 0.85]
@@ -118,10 +118,10 @@ class yoloHeadv3(nn.Module):
         pred_boxes[..., 3] = torch.exp(h.data) * anchor_y
 
         if isTrain:
-            if x.is_cuda:
-                self.mse_loss.cuda()
-                self.ce_loss.cuda()
-                self.bce_loss.cuda()
+            #if x.is_cuda:
+            #    self.mse_loss.cuda()
+            #    self.ce_loss.cuda()
+            #    self.bce_loss.cuda()
 
             nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls = build_targets(
                 pred_boxes=pred_boxes,
@@ -151,7 +151,7 @@ class yoloHeadv3(nn.Module):
             tconf = Variable(tconf.type(FloatTensor), requires_grad=False)
             tcls = Variable(tcls.type(LongTensor), requires_grad=False)
 
-            
+
             # Mask outputs to ignore non-existing objects
             loss_x = self.mse_loss(x[mask], tx[mask])
             loss_y = self.mse_loss(y[mask], ty[mask])
@@ -163,6 +163,11 @@ class yoloHeadv3(nn.Module):
             loss_cls = self.ce_loss(clss[mask], torch.argmax(tcls[mask], 1))
             loss_pos = (loss_x + loss_y + loss_w + loss_h) 
             loss = loss_pos * self.lb_pos + loss_conf + loss_cls*self.lb_class
+            
+            if torch.sum(mask) == 0 or torch.isnan(loss_conf) or torch.isinf(loss_conf):
+                print(
+                    f'Target tensor max {torch.max(targets)} | min {torch.min(targets)}')
+            
             return (
                 loss,
                 {

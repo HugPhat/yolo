@@ -163,7 +163,7 @@ class yoloCoreDataset(Dataset):
 
         img, labels, name = self.content(index, draw=self.draw)
 
-        input_img = self.transform(img.copy()).float()
+        input_img = self.transform(img.copy()/255.0).float()
         labels = labels.reshape(-1, 5)
         
         # Fill matrix

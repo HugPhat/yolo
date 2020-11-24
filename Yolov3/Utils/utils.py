@@ -261,9 +261,9 @@ def build_targets(
             ty[b, best_n, gj, gi] = gy - gj
             # Width and height
             tw[b, best_n, gj, gi] = torch.log(
-                gw.data / (anchors[best_n.item()][0] + 1e-16))
+                gw.item() / (anchors[best_n.item()][0] + 1e-8))
             th[b, best_n, gj, gi] = torch.log(
-                gh.data / (anchors[best_n.item()][1] + 1e-16))
+                gh.item() / (anchors[best_n.item()][1] + 1e-8))
             # One-hot encoding of label
             target_label = int(target[b, t, 0].cpu().data)
             tcls[b, best_n, gj, gi, target_label] = 1

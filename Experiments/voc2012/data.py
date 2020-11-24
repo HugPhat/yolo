@@ -77,12 +77,14 @@ class VOC_data(yoloCoreDataset):
         return image, bboxes, fname
 
 if __name__ == '__main__':
-
+    import torch
     labels = readTxt(os.path.join(PATH, 'config', 'class.names'))
     labels.insert(0,0)
     path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
     #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root,split=0.8, is_train=True, labels=labels, debug=True, draw=False, argument=True)
-    for i, each in enumerate(voc):
+    voc = VOC_data(path= path_2_root,split=0.8, is_tqrain=True, labels=labels, debug=True, draw=False, argument=True)
+    for i, (inp, tar) in enumerate(voc):
+        print('INP max {} min {}'.format(torch.max(inp), torch.min(inp)))
+        print('TAR max {} min {}'.format(torch.max(tar), torch.min(tar)))
         print(f'{i} / {len(voc)}')

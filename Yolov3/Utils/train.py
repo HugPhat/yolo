@@ -126,6 +126,9 @@ def train(
                 # zero grads
                 optimizer.zero_grad()
                 output = model(input_tensor, target_tensor) # return loss
+                if  torch.isinf(output).any() or torch.isnan(output).any():
+                    print(f'inp max {torch.max(input_tensor)} | min {torch.min(input_tensor)}')
+                    print(f'tar max {torch.max(target_tensor)} | min {torch.min(target_tensor)}')
                 loss_value += output.item()/3
                 checkpoint_index = (epoch -1)*len(trainLoader) + batch_index
                 write_now =  (checkpoint_index + 1) % 1 == 0  ## 1-> 20
