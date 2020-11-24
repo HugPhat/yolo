@@ -29,7 +29,7 @@ class custom_aug:
                     #translate_px={"x": (-10, 10), "y": (-10, 10) },
                     #translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                     rotate=(-30, 30),  # rotate by -45 to +45 degrees
-                    shear=(-5, 5),  # shear by -16 to +16 degrees
+                    #shear=(-5, 5),  # shear by -16 to +16 degrees
                     # use nearest neighbour or bilinear interpolation (fast)
                     #order=[0, 1],
                     # if mode is constant, use a cval between 0 and 255
@@ -66,8 +66,8 @@ class custom_aug:
                         0.0, 0.05*255), per_channel=0.5),
                     iaa.OneOf([
                         # randomly remove up to 10% of the pixels
-                        iaa.Dropout((0.01, 0.1), per_channel=0.5),
-                        iaa.CoarseDropout((0.03, 0.15), size_percent=(
+                        iaa.Dropout((0.01, 0.04), per_channel=0.5),
+                        iaa.CoarseDropout((0.03, 0.1), size_percent=(
                             0.02, 0.05), per_channel=0.2),
                     ]),
                     # invert color channels

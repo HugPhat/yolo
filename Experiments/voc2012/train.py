@@ -162,7 +162,7 @@ if __name__ == "__main__":
     labels = data.readTxt(os.path.join(File_Path, 'config', 'class.names'))
     labels.insert(0, 0)# plus 0th: background
     trainLoader = DataLoader(data.VOC_data(path=path_2_root, labels=labels, max_objects=18, split=args.split,
-                                        debug=False, draw=False, argument=True, is_train=True),
+                                        debug=False, draw=False, argument=False, is_train=True),
                              batch_size=args.batch_size, 
                              shuffle=True, 
                              num_workers=args.num_worker,
@@ -250,7 +250,7 @@ if __name__ == "__main__":
                     if isinstance(v, torch.Tensor):
                         state[k] = v.cuda()
         sche_sd = checkpoint['sche']
-        if sche_sd:
+        if sche_sd and args.use_scheduler:
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=num_steps)
             lr_scheduler.load_state_dict(sche_sd)
