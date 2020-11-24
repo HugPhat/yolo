@@ -234,11 +234,15 @@ if __name__ == "__main__":
                         weight_decay=wd, 
                         momentum=momen
                         )
+            print(
+                f"Use optimizer SGD with lr {lr_rate} wdecay {wd} momentum {momen}")
         else:
             optimizer = optim.Adam(yolo.parameters(),
                                 lr=lr_rate,
                                 weight_decay=wd,
                                 )
+            print(
+                f"Use optimizer Adam with lr {lr_rate} wdecay {wd}")
         optimizer.load_state_dict(checkpoint['optimizer'])
         if not args.use_cpu:
             for state in optimizer.state.values():
@@ -250,11 +254,13 @@ if __name__ == "__main__":
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=num_steps)
             lr_scheduler.load_state_dict(sche_sd)
-            if not args.use_cpu:
-                for state in lr_scheduler.state.values():
-                    for k, v in state.items():
-                        if isinstance(v, torch.Tensor):
-                            state[k] = v.cuda()
+            warmup_scheduler = GradualWarmupScheduler(
+                optimizer, multiplier=1, total_epoch=4, after_scheduler=lr_scheduler)
+            #if not args.use_cpu:
+            #    for state in lr_scheduler.state.values():
+            #        for k, v in state.items():
+            #            if isinstance(v, torch.Tensor):
+            #                state[k] = v.cuda()
 
         print(f"Resume Trainig at Epoch {checkpoint['epoch']} ")
         writer = create_writer(log_file)
@@ -290,13 +296,13 @@ if __name__ == "__main__":
         
         writer = create_writer(log_file)# create new log
     #set up lr scheduler and warmup
-    print('Set up scheduler and warmup')
     #num_steps = len(trainLoader) * args.epoch # move to line 174
     if not lr_scheduler and args.use_scheduler:
+        print('Set up scheduler and warmup')
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=num_steps)
         warmup_scheduler = GradualWarmupScheduler(
-            optimizer, multiplier=1, total_epoch=10, after_scheduler=lr_scheduler)
+            optimizer, multiplier=1, total_epoch=4, after_scheduler=lr_scheduler)
 
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
