@@ -27,7 +27,7 @@ import data
 
 import pytorch_warmup as warmup
 from warmup_scheduler import GradualWarmupScheduler
-
+torch.autograd.set_detect_anomaly(True)
 # logger callback:
 def create_writer(log_saving_path):
   writer = SummaryWriter(log_dir=log_saving_path)

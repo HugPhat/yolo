@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch
 import math
-
+EPSILON = 1e-9
 
 def load_classes(path):
     """
@@ -73,8 +73,8 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
     # get the corrdinates of the intersection rectangle
     inter_rect_x1 = torch.max(b1_x1, b2_x1)
     inter_rect_y1 = torch.max(b1_y1, b2_y1)
-    inter_rect_x2 = torch.min(b1_x2, b2_x2)
-    inter_rect_y2 = torch.min(b1_y2, b2_y2)
+    inter_rect_x2 = torch.min(b1_x2, b2_x2).clamp(min=0)
+    inter_rect_y2 = torch.min(b1_y2, b2_y2).clamp(min=0)
     # Intersection area
     inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
         inter_rect_y2 - inter_rect_y1 + 1, min=0
@@ -257,13 +257,13 @@ def build_targets(
             mask[b, best_n, gj, gi] = 1
             noobj_mask[b, best_n, gj, gi] = 0
             # Coordinates
-            tx[b, best_n, gj, gi] = gx - gi
-            ty[b, best_n, gj, gi] = gy - gj
+            tx[b, best_n, gj, gi] = (gx - gi).clamp(EPSILON, 1 - EPSILON)
+            ty[b, best_n, gj, gi] = (gy - gj).clamp(EPSILON, 1 - EPSILON)
             # Width and height
             tw[b, best_n, gj, gi] = torch.log(
-                gw.item() / (anchors[best_n.item()][0] + 1e-8))
+                gw.cpu().item() / (anchors[best_n.item()][0] + 1e-8)).clamp(min=EPSILON))
             th[b, best_n, gj, gi] = torch.log(
-                gh.item() / (anchors[best_n.item()][1] + 1e-8))
+            gh.cpu().item() / (anchors[best_n.item()][1] + 1e-8)).clamp(min = EPSILON))
             # One-hot encoding of label
             target_label = int(target[b, t, 0].cpu().data)
             tcls[b, best_n, gj, gi, target_label] = 1

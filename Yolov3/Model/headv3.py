@@ -117,6 +117,10 @@ class yoloHeadv3(nn.Module):
         pred_boxes[..., 2] = torch.exp(w.data) * anchor_x
         pred_boxes[..., 3] = torch.exp(h.data) * anchor_y
 
+        if torch.isnan(conf).any():
+            print(f'predict { predict } size {predict.size()}')
+            print(clss)
+            print(predict[..., 4])
         if isTrain:
             #if x.is_cuda:
             #    self.mse_loss.cuda()
