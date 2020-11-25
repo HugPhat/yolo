@@ -1,10 +1,6 @@
-from datetime import datetime
 import numpy as np
-from torch.autograd import Variable
-import torch.nn.functional as F
-import torch.nn as nn
 import torch
-import math
+
 EPSILON = 1e-9
 
 def load_classes(path):
