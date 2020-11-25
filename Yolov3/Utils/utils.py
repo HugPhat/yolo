@@ -1,6 +1,5 @@
 from datetime import datetime
 import numpy as np
-from torch._C import LongTensor
 from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
