@@ -1,5 +1,6 @@
 from datetime import datetime
 import numpy as np
+from torch._C import LongTensor
 from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
@@ -207,6 +208,7 @@ def build_targets(
                 ):
     BoolTensor = torch.cuda.BoolTensor if pred_boxes.is_cuda else torch.BoolTensor
     FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
+    LongTensor = torch.cuda.LongTensor if pred_boxes.is_cuda else torch.LongTensor
 
     nB = target.size(0)
     nA = num_anchors
@@ -229,13 +231,13 @@ def build_targets(
                 continue
             nGT += 1
             # Convert to position relative to box
-            gx = target[b, t, 1].data * nG
-            gy = target[b, t, 2].data * nG
-            gw = target[b, t, 3].data * nG
-            gh = target[b, t, 4].data * nG
+            gx = target[b, t, 1] * nG
+            gy = target[b, t, 2] * nG
+            gw = target[b, t, 3] * nG
+            gh = target[b, t, 4] * nG
             # Get grid box indices
-            gi = int(gx) if int(gx) < nG else nG-1
-            gj = int(gy) if int(gy) < nG else nG-1
+            gi = gx.floor().type(LongTensor)
+            gj = gy.floor().type(LongTensor)
             # Get shape of gt box
             gt_box = FloatTensor([0, 0, gw, gh]).unsqueeze(0)
             # Get shape of anchor box
@@ -261,16 +263,16 @@ def build_targets(
             ty[b, best_n, gj, gi] = (gy - gj).clamp(EPSILON, 1 - EPSILON)
             # Width and height
             tw[b, best_n, gj, gi] = torch.log(
-                gw.cpu().item() / (anchors[best_n.item()][0] + 1e-8)).clamp(min=EPSILON))
+                gw / (anchors[best_n][0] + 1e-8)).clamp(min=EPSILON)
             th[b, best_n, gj, gi] = torch.log(
-            gh.cpu().item() / (anchors[best_n.item()][1] + 1e-8)).clamp(min = EPSILON))
+            gh / (anchors[best_n][1] + 1e-8)).clamp(min = EPSILON)
             # One-hot encoding of label
             target_label = int(target[b, t, 0].cpu().data)
             tcls[b, best_n, gj, gi, target_label] = 1
             tconf[b, best_n, gj, gi] = 1
 
             iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False)
-            pred_label = torch.argmax(pred_cls[b, best_n, gj, gi])
+            pred_label = torch.argmax(pred_cls[b, best_n, gj, gi]).cpu().data
             score = pred_conf[b, best_n, gj, gi]
             if iou > IoU_thresh and pred_label == target_label and score.item() > score_thresh:
                 nCorrect += 1

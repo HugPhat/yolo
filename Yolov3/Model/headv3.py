@@ -111,11 +111,11 @@ class yoloHeadv3(nn.Module):
         anchor_y = scale_anchors[:, 1:2].view((1, self.num_anchor, 1, 1))
 
         pred_boxes = FloatTensor(predict[..., :4].shape)
-        pred_boxes[..., 0] = x.data + coor_x
+        pred_boxes[..., 0] = x + coor_x
 
-        pred_boxes[..., 1] = y.data + coor_y
-        pred_boxes[..., 2] = torch.exp(w.data) * anchor_x
-        pred_boxes[..., 3] = torch.exp(h.data) * anchor_y
+        pred_boxes[..., 1] = y + coor_y
+        pred_boxes[..., 2] = torch.exp(w).clamp(max=1E3) * anchor_x
+        pred_boxes[..., 3] = torch.exp(h).clamp(max=1E3) * anchor_y
 
         if torch.isnan(conf).any():
             print(f'predict { predict } size {predict.size()}')
