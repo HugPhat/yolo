@@ -51,7 +51,7 @@ class yoloHeadv3(nn.Module):
         """
         precision = {}
         for each in self.confidence_points:
-            nProposals = int((_tensor.cpu().data > each).sum())
+            nProposals = float((_tensor.cpu() > each).sum())
             if nProposals > 0:
                 precision.update({ 'P'+str(each): float(nCorrect/ nProposals)})
             else:
