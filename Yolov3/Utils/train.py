@@ -1,170 +1,238 @@
-import numpy as np
+import sys
 import os
+import shutil
+from datetime import datetime
+
+pwd_path = os.getcwd()
+sys.path.insert(0, os.path.join(os.getcwd(), '../..'))
+#sys.path.insert(1, pwd_path)
+
+import numpy as np
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from torchvision import datasets
 from torchvision import transforms
 
-from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
-def save_model(name, model, optimizer, path, epoch, optim_name, lr_rate,wd,m, lr_scheduler):
-    checkpoint = {
-        'epoch': epoch + 1,
-        'state_dict': model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        'optimizer_name': optim_name,
-        'lr': lr_rate,
-        'wd': wd,
-        'm':m,
-        'sche': lr_scheduler.state_dict() if lr_scheduler else None,
-    }
-    path = os.path.join(path, name)
-    torch.save(checkpoint,  path)
+from Yolov3.Utils.train_module import train_module
 
-def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpoint_index, mode, print_now:bool, epoch):
-    """Accumulate loss value if variable exist else create dict element of [loss_accumulate] || Unpack precision || Write loss values to tensorboard
 
-    Args:
-        loss_accumulate ([dict]): [dictionary of all loss values]
-        loss ([dict]): [loss values passing to loss function]
-        writer ([SummaryWriter]): [tensorboard writer object]
-        checkpoint_index ([int]): [checkpoint_index of update round]
-        mode ([str]): [train or val]
-        print_now([bool]): [execute print log]
-    Returns:
-        loss_accumulate([dict]) : [change of loss_accumulate]
-    """
-    ##
-    if loss_accumulate =={}:
-        keys = list(loss[0].keys())
-        for key in keys:
-            loss_accumulate.update({key : []})
-    for order, layer in enumerate(loss):
-        for (k, v) in loss_accumulate.items():
-            try:
-                loss_accumulate[k][order] += layer[k]
-            except:
-                loss_accumulate[k].insert(order, layer[k])
-    desc = ""
-    for (k, v) in loss_accumulate.items():
-        temp = {}
-        if not k in ['loss_x', 'loss_y', 'loss_w', 'loss_h']:
-            desc += '|' + str(k) + ": " + str(round(sum(v)/ (batch_index *3), 3))
-        for i, each in enumerate(v):
-            #desc += str(each/batch_index) + " |"
-            temp.update({'layer_' + str(i) : each/batch_index})
-            if print_now:
-                if mode == 'val':
-                    writer.add_scalar(k + '_layer_' + str(i) + "/" + mode , each/ batch_index, epoch)
-                else:
-                    writer.add_scalar(
-                        k + '_layer_' + str(i) + "/" + mode, each / batch_index, checkpoint_index)
+import pytorch_warmup as warmup
+from warmup_scheduler import GradualWarmupScheduler
+torch.autograd.set_detect_anomaly(True)
 
-    return loss_accumulate, desc
+
+from Yolov3.Utils.args_train import get_args
+from Yolov3.Dataset.dataset import yoloCoreDataset
+from Yolov3.Utils.create_model import create_model
+
+# logger callback:
+
+
+def create_writer(log_saving_path):
+  writer = SummaryWriter(log_dir=log_saving_path)
+  print(f'Log file is saved at <{log_saving_path}>')
+  #logfile = open(os.path.join(log_dir, 'log.txt'), 'w')
+  return writer
+
+def template_dataLoaderFunc(dataSet: yoloCoreDataset, args, labels):
+    if labels is None:
+        with open(args.labels, 'r') as f:
+            labels = f.data()
+            labels.pop(-1)
+
+    trainLoader = DataLoader(dataSet(path=args.data, labels=labels, max_objects=18, split=args.split,
+                                           debug=False, draw=False, argument=False, is_train=True),
+                             batch_size=args.batch_size,
+                             shuffle=True,
+                             num_workers=args.num_worker,
+                             drop_last=False
+                             )
+    # dont use img augment for val
+    valLoader = DataLoader(dataSet(path=args.data, labels=labels, max_objects=18, split=args.split,
+                                         debug=False, draw=False, argument=False, is_train=False),
+                           batch_size=args.batch_size,
+                           shuffle=True,
+                           num_workers=args.num_worker,
+                           drop_last=False
+                           )
+    return trainLoader, valLoader
 
 def train(
-    model,  # yolov3
-    trainLoader: DataLoader, # train: DataLoader
-    valLoader : DataLoader, # val: DataLoader
-    optimizer_name:str, # 
-    optimizer : optim, # optimizer 
-    lr_scheduler: optim.lr_scheduler,
-    warmup_scheduler ,
-    writer, # tensorboard logger 
-    use_cuda: bool,
-    Epochs : int,
-    path:str,
-    lr_rate:float,
-    wd:float,# weightdecay
-    momen:float,
-    start_epoch=1,
-    
+    pwd_path,
+    dataLoaderFunc, # callback returns [trainLoader, valLoader]
+    modelLoaderFunc=None, # callback load different architect model
 ):
-    """Template Train function 
+    ###### handle args #########
+    args = get_args()
+    ############################
 
-    Args: \n
-        model (yolov3): pre defined yolov3 model \n
-        trainLoader(Dataloader) \n
-        valLoader(Dataloader) \n
-        optimizer(torch.optim) \n
-        lr_scheduler \n
-        Epochs (int): number of epoch \n
-        use_cuda (bool): use cuda (gpu) or not \n
-        path (str) : path to save model checkpoint
-    Returns:
-        type: description
-    """
+    trainLoader, valLoader = dataLoaderFunc(args)
 
-    #accuracy_array = []
-    #recall_array = []
-    #precision_array = []
-    best_loss_value = 1000
-    best_current_model = 'best_model.pth'
+    print('Succesfully load dataset')
     
-    if use_cuda:
-        FloatTensor = torch.cuda.FloatTensor
-        model.cuda()
+    num_steps = len(trainLoader) * args.epoch
+    lr_scheduler = None
+    warmup_scheduler = None
+
+    ############### Loading Model ####################
+    if not args.cfg and modelLoaderFunc is None:
+        print(f'Succesfully load model with default config')
+        yolo = create_model(num_classes=args.num_class,
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_pos=args.lb_pos
+                            )
+    elif args.cfg == 'default':
+        f = os.path.join(pwd_path, 'config', 'yolov3.cfg')
+        print(f"Succesfully load model with custom config at '{f}' ")
+        yolo = create_model(None, default_cfg=f,
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_pos=args.lb_pos
+                            )
     else:
-        FloatTensor = torch.FloatTensor
-    for epoch in range(start_epoch, Epochs + 1):
-        model.train()
-        loss_value = 0
-        loss_accumulate = {}
-        #loss, lossX, lossY, lossW, lossH, lossConfidence, lossClass, recall, precision = 0, 0, 0, 0, 0, 0, 0, 0, 0
-        with tqdm(total = len(trainLoader)) as epoch_pbar:
-            epoch_pbar.set_description(f'[Train] Epoch {epoch}')
-            
-            for batch_index, (input_tensor, target_tensor) in enumerate(trainLoader):
-                input_tensor = input_tensor.type(FloatTensor)
-                target_tensor = target_tensor.type(FloatTensor)
-                # zero grads
-                optimizer.zero_grad()
-                output = model(input_tensor, target_tensor) # return loss
-                if  torch.isinf(output).any() or torch.isnan(output).any():
-                    print(f'inp max {torch.max(input_tensor)} | min {torch.min(input_tensor)}')
-                    print(f'tar max {torch.max(target_tensor)} | min {torch.min(target_tensor)}')
-                loss_value += output.item()/3
-                checkpoint_index = (epoch -1)*len(trainLoader) + batch_index
-                write_now =  (checkpoint_index + 1) % 1 == 0  ## 1-> 20
-                loss_accumulate, desc = unpack_data_loss_function(
-                    loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'train', write_now, epoch)
-                #print(loss_accumulate['total'])
-                description = f'[Train: {epoch}/{Epochs} Epoch]:[{desc}]'
-                epoch_pbar.set_description(description)
-                epoch_pbar.update(1)
-                output.backward()
-                optimizer.step()
-                if lr_scheduler:
-                    lr_scheduler.step(epoch)
-                if warmup_scheduler:   
-                    warmup_scheduler.step(epoch)
-        loss_accumulate = {}
-        model.eval()
-        with tqdm(total=len(valLoader)) as epoch_pbar:
-            epoch_pbar.set_description(f'[Validate] Epoch {epoch}')
-            for batch_index, (input_tensor, target_tensor) in enumerate(valLoader):
-                input_tensor = input_tensor.type(FloatTensor)
-                target_tensor = target_tensor.type(FloatTensor)    
-                # return dictionary
-                with torch.no_grad():
-                    output = model(input_tensor, target_tensor)  # return loss
-                checkpoint_index = (epoch -1)*len(valLoader) + batch_index
-                write_now = (batch_index + 1) == len(valLoader) 
-                loss_accumulate, desc = unpack_data_loss_function(
-                    loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
-                description = f'[Validate: {epoch}/{Epochs} Epoch]:[{desc}]'
-                epoch_pbar.set_description(description)
-                epoch_pbar.update(1)
-        total= sum(loss_accumulate['total']) / (len(valLoader))
-        if total < best_loss_value:
-            save_model(model=model, path=path, name=best_current_model, 
-            epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
-        save_model(model=model, path=path, name="current_checkpoint.pth",
-                   epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
-        
+        print(f"Succesfully load model with custom config at '{args.cfg}' ")
+        yolo = create_model(None, default_cfg=args.cfg,
+                            lb_noobj=args.lb_noobj,
+                            lb_obj=args.lb_obj,
+                            lb_class=args.lb_clss,
+                            lb_pos=args.lb_pos
+                            )
+    if not modelLoaderFunc is None:
+        print('Load new architect with yoloHead ..')
+        yolo = modelLoaderFunc(
+            lb_noobj = args.lb_noobj,
+            lb_obj = args.lb_obj,
+            lb_class = args.lb_clss,
+            lb_pos = args.lb_pos
+            )
+        print('Done, successfully loading model')
+    # Parallelism
+    if not args.use_cpu:
+        yolo = torch.nn.DataParallel(yolo) 
+    ##############################################
+    if args.log_path == "checkpoint":
+        log_folder = os.path.join(pwd_path, args.log_path, 'yolo')
+    else:
+        log_folder = args.log_path
+
+    log_file = os.path.join(log_folder, 'log')
+
+    list_model = os.listdir(log_folder) if os.path.exists(log_folder) else []
+    # in log folder have current model and want to resume training
+    if "current_checkpoint.pth" in list_model and args.to_continue:
+        checkpoint = torch.load(os.path.join(
+            log_folder, "current_checkpoint.pth"), map_location=torch.device('cpu'))
+        yolo.load_state_dict(checkpoint['state_dict'])
+        optim_name = checkpoint["optimizer_name"]
+        lr_rate = checkpoint['lr']
+        wd = checkpoint['wd']
+        momen = checkpoint['m']
+        start_epoch = checkpoint['epoch']
+        if optim_name == 'sgd':
+            optimizer = optim.SGD(yolo.parameters(),
+                                  lr=lr_rate,
+                                  weight_decay=wd,
+                                  momentum=momen
+                                  )
+            print(
+                f"Use optimizer SGD with lr {lr_rate} wdecay {wd} momentum {momen}")
+        else:
+            optimizer = optim.Adam(yolo.parameters(),
+                                   lr=lr_rate,
+                                   weight_decay=wd,
+                                   )
+            print(
+                f"Use optimizer Adam with lr {lr_rate} wdecay {wd}")
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        if not args.use_cpu:
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
+        sche_sd = checkpoint['sche']
+        if sche_sd and args.use_scheduler:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=num_steps)
+            lr_scheduler.load_state_dict(sche_sd)
+            warmup_scheduler = GradualWarmupScheduler(
+                optimizer, multiplier=1, total_epoch=4, after_scheduler=lr_scheduler)
+            #if not args.use_cpu:
+            #    for state in lr_scheduler.state.values():
+            #        for k, v in state.items():
+            #            if isinstance(v, torch.Tensor):
+            #                state[k] = v.cuda()
+
+        print(f"Resume Trainig at Epoch {checkpoint['epoch']} ")
+        writer = create_writer(log_file) 
+
+    else:
+        print("Loading new model")
+        if args.use_pretrained:
+            print("Loading pretrained weight")
+            yolo.load_pretrained_by_num_class()
+        if args.use_pretrained and args.freeze_backbone:
+            grads_layer = ("81", "93", "105")
+            for name, child in yolo.yolov3.named_children():
+                if not name in grads_layer:
+                    for each in child.parameters():
+                        each.requires_grad = False
+            print(f'Freezed all layers excludings {grads_layer}')
+        if os.path.exists(log_file):
+            old = datetime.now().strftime("%M%H_%d%m%Y") + "_old"
+            shutil.copytree(log_file, os.path.join(
+                log_folder, old), False, None)  # copy to old folder
+            shutil.rmtree(log_file, ignore_errors=True)  # remove log
+        lr_rate = args.lr
+        wd = args.wd
+        momen = args.momentum
+        start_epoch = 1
+        if args.optim == 'sgd':
+            print(
+                f"Use optimizer SGD with lr {lr_rate} wdecay {wd} momentum {momen}")
+            optimizer = optim.SGD(
+                yolo.parameters(), lr=lr_rate, weight_decay=wd, momentum=momen)
+        elif args.optim == 'adam':
+            print(f"Use optimizer Adam with lr {lr_rate} wdecay {wd} ")
+            optimizer = optim.Adam(
+                yolo.parameters(), lr=lr_rate, weight_decay=wd)
+        else:
+            raise f"optimizer {args.optim} is not supported"
+
+        writer = create_writer(log_file)  
+    #set up lr scheduler and warmup
+    #num_steps = len(trainLoader) * args.epoch # move to line 174
+    if not lr_scheduler and args.use_scheduler:
+        print('Set up scheduler and warmup')
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=num_steps)
+        warmup_scheduler = GradualWarmupScheduler(
+            optimizer, multiplier=1, total_epoch=4, after_scheduler=lr_scheduler)
+
+    print('Start training model by GPU') if not args.use_cpu else print(
+        'Start training model by CPU')
+    train_module(
+        model=yolo,
+        trainLoader=trainLoader,
+        valLoader=valLoader,
+        optimizer_name=args.optim,
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
+        warmup_scheduler=warmup_scheduler,
+        Epochs=args.epoch,
+        use_cuda=not args.use_cpu,
+        writer=writer,
+        path=log_folder,
+        lr_rate=lr_rate,
+        wd=wd,
+        momen=momen,
+        start_epoch=start_epoch
+    )
