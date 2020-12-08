@@ -7,7 +7,7 @@ sys.path.append(File_Path)
 sys.path.insert(0, os.path.join(os.getcwd(), '../..'))
 #sys.path.insert(1, File_Path)
 
-from Yolov3.Utils.Train import template_dataLoaderFunc, train
+from Yolov3.Utils.train import template_dataLoaderFunc, train
 import voc_data
 
 def loadData(args):
