@@ -115,9 +115,7 @@ def train(
             lb_pos = args.lb_pos
             )
         print('Done, successfully loading model')
-    # Parallelism
-    if not args.use_cpu:
-        yolo = torch.nn.DataParallel(yolo) 
+    
     ##############################################
     if args.log_path == "checkpoint":
         log_folder = os.path.join(pwd_path, args.log_path, 'yolo')
@@ -216,7 +214,9 @@ def train(
             optimizer, T_max=num_steps)
         warmup_scheduler = GradualWarmupScheduler(
             optimizer, multiplier=1, total_epoch=4, after_scheduler=lr_scheduler)
-
+    # Parallelism
+    #if not args.use_cpu:
+        #yolo = torch.nn.DataParallel(yolo)
     print('Start training model by GPU') if not args.use_cpu else print(
         'Start training model by CPU')
     train_module(

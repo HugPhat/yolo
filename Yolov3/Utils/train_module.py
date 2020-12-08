@@ -132,11 +132,8 @@ def train_module(
                 loss_value += output.item()/3
                 checkpoint_index = (epoch -1)*len(trainLoader) + batch_index
                 write_now =  (checkpoint_index + 1) % 1 == 0  ## 1-> 20
-                if use_cuda:
-                    loss_accumulate, desc = unpack_data_loss_function(
-                    loss_accumulate, model.module.losses_log, writer, batch_index + 1, checkpoint_index, 'train', write_now, epoch)
-                else:
-                    loss_accumulate, desc = unpack_data_loss_function(
+
+                loss_accumulate, desc = unpack_data_loss_function(
                         loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'train', write_now, epoch)
                 #print(loss_accumulate['total'])
                 description = f'[Train: {epoch}/{Epochs} Epoch]:[{desc}]'
@@ -160,11 +157,8 @@ def train_module(
                     output = model(input_tensor, target_tensor)  # return loss
                 checkpoint_index = (epoch -1)*len(valLoader) + batch_index
                 write_now = (batch_index + 1) == len(valLoader) 
-                if use_cuda:
-                    loss_accumulate, desc = unpack_data_loss_function(
-                    loss_accumulate, model.module.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
-                else:
-                    loss_accumulate, desc = unpack_data_loss_function(
+
+                loss_accumulate, desc = unpack_data_loss_function(
                         loss_accumulate, model.losses_log, writer, batch_index + 1, checkpoint_index, 'val', write_now, epoch)
                 description = f'[Validate: {epoch}/{Epochs} Epoch]:[{desc}]'
                 epoch_pbar.set_description(description)
