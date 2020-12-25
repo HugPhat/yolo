@@ -18,20 +18,20 @@ class custom_aug:
                 iaa.Flipud(0.1),  # vertically flip 20% of all images
                 # crop images by -5% to 10% of their height/width
                 sometimes(iaa.CropAndPad(
-                    percent=(0, 0.05),
+                    percent=(0, 0.15),
                     pad_mode=ia.ALL,
                     pad_cval=(0, 255)
                 )),
                 sometimes(iaa.Affine(
                     # scale images to 80-120% of their size, individually per axis
-                    #scale={"x": (0.9, 1.05), "y": (0.9, 1.05)},
+                    scale={"x": (0.9, 1.25), "y": (0.9, 1.25)},
                     # translate by -20 to +20 percent (per axis)
-                    #translate_px={"x": (-10, 10), "y": (-10, 10) },
-                    #translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+                    translate_px={"x": (-10, 10), "y": (-10, 10) },
+                    translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                     rotate=(-30, 30),  # rotate by -45 to +45 degrees
-                    #shear=(-5, 5),  # shear by -16 to +16 degrees
+                    shear=(-5, 5),  # shear by -16 to +16 degrees
                     # use nearest neighbour or bilinear interpolation (fast)
-                    #order=[0, 1],
+                    order=[0, 1],
                     # if mode is constant, use a cval between 0 and 255
                     cval=(0, 255),
                     # use any of scikit-image's warping modes (see 2nd image from the top for examples)
@@ -42,8 +42,8 @@ class custom_aug:
                 iaa.SomeOf((0, 5),
                            [
                     # convert images into their superpixel representation
-                    #sometimes(iaa.Superpixels(
-                    #    p_replace=(0, 1.0), n_segments=(20, 100))),
+                    sometimes(iaa.Superpixels(
+                        p_replace=(0, 1.0), n_segments=(20, 100))),
                     iaa.OneOf([
                         # blur images with a sigma between 0 and 3.0
                         iaa.GaussianBlur((0, 1.0)),
@@ -53,8 +53,8 @@ class custom_aug:
                         #iaa.MedianBlur(k=(1, 3)),
                     ]),
                     iaa.Sharpen(alpha=(0, 1.0), lightness=( 0.75, 1.)),  # sharpen images
-                    #iaa.Emboss(alpha=(0.4, 0.8), strength=(
-                    #    0.4, 0.8)),  # emboss images
+                    iaa.Emboss(alpha=(0.4, 0.8), strength=(
+                        0.4, 0.8)),  # emboss images
                     # search either for all edges or for directed edges,
                     # blend the result with the original image using a blobby mask
                     iaa.SimplexNoiseAlpha(iaa.OneOf([
@@ -88,13 +88,13 @@ class custom_aug:
                     ]),
                     # improve or worsen the contrast
                     #iaa.LinearContrast((0.1, .60), per_channel=0.5),
-                    #iaa.Grayscale(alpha=(0.1, .5)),
+                    iaa.Grayscale(alpha=(0.1, .5)),
                     # move pixels locally around (with random strengths)
-                    #sometimes(iaa.ElasticTransformation(
-                    #    alpha=(0.7, 1), sigma=0.1)),
+                    sometimes(iaa.ElasticTransformation(
+                        alpha=(0.7, 1), sigma=0.1)),
                     # sometimes move parts of the image around
-                    #sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))),
-                    #sometimes(iaa.PerspectiveTransform(scale=(0.1, 0.5)))
+                    sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))),
+                    sometimes(iaa.PerspectiveTransform(scale=(0.1, 0.5)))
                 ],
                     random_order=True
                 )
