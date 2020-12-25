@@ -109,7 +109,7 @@ def train_module(
     
     if use_cuda:
         FloatTensor = torch.cuda.FloatTensor
-        model.cuda()
+        #model.cuda()
     else:
         FloatTensor = torch.FloatTensor
     for epoch in range(start_epoch, Epochs + 1):

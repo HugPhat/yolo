@@ -2,6 +2,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch
 from Yolov3.Utils.utils import build_targets
+from Yolov3.Utils.focal_loss import focal_loss
 
 class yoloHeadv3(nn.Module):
     def __init__(self, anchor,
@@ -12,6 +13,8 @@ class yoloHeadv3(nn.Module):
                  lb_class=1.0,
                  lb_pos=1.0,
                  ignore_thresh = 0.5,
+                 use_focal_loss=False,
+                 device='cuda'
                  ):
         """Yolo detection layer
 
@@ -38,10 +41,12 @@ class yoloHeadv3(nn.Module):
         self.lb_class = lb_class
         self.lb_pos = lb_pos
 
-        self.mse_loss = nn.MSELoss()
-        self.bce_loss = nn.BCELoss()
-        self.ce_loss = nn.CrossEntropyLoss()
-
+        self.mse_loss = nn.MSELoss().to(device=device)
+        self.bce_loss = nn.BCELoss().to(device=device)
+        self.class_loss = nn.CrossEntropyLoss().to(
+            device=device) if not use_focal_loss else focal_loss(ignore_index=0, device=device)
+        if  use_focal_loss:
+            print('Compute classification loss by ',self.class_loss.__class__.__name__)
         self.confidence_points = [0.5, 0.75, 0.85]
 
     def calculate_precision(self, nCorrect, _tensor) -> dict:
@@ -53,9 +58,9 @@ class yoloHeadv3(nn.Module):
         for each in self.confidence_points:
             nProposals = float((_tensor.cpu() > each).sum())
             if nProposals > 0:
-                precision.update({ 'P'+str(each): float(nCorrect/ nProposals)})
+                precision.update({ 'P_'+str(each): float(nCorrect/ nProposals)})
             else:
-                precision.update({'P'+str(each): 0})
+                precision.update({'P_'+str(each): 0})
 
         return precision
 
@@ -124,7 +129,7 @@ class yoloHeadv3(nn.Module):
         if isTrain:
             #if x.is_cuda:
             #    self.mse_loss.cuda()
-            #    self.ce_loss.cuda()
+            #    self.class_loss.cuda()
             #    self.bce_loss.cuda()
 
             nGT, nCorrect, mask, noobj_mask, tx, ty, tw, th, tconf, tcls = build_targets(
@@ -164,7 +169,7 @@ class yoloHeadv3(nn.Module):
             loss_conf = self.bce_loss(conf[mask], tconf[mask])*self.lb_obj +\
                             self.bce_loss(conf[noobj_mask], tconf[noobj_mask])*self.lb_noobj
 
-            loss_cls = self.ce_loss(clss[mask], torch.argmax(tcls[mask], 1))
+            loss_cls = self.class_loss(clss[mask], torch.argmax(tcls[mask], 1))
             loss_pos = (loss_x + loss_y + loss_w + loss_h) 
             loss = loss_pos * self.lb_pos + loss_conf + loss_cls*self.lb_class
             

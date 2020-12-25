@@ -4,6 +4,7 @@ from collections import defaultdict
 import numpy as np
 
 import torch
+#from torch._C import device
 import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.transforms as transforms
@@ -28,7 +29,9 @@ class yolov3(nn.Module):
                  lb_noobj=1.0,
                  lb_obj=5.0,
                  lb_class=2.0,
-                 lb_pos=1.0
+                 lb_pos=1.0,
+                 use_focal_loss=False,
+                 device='cuda'
                  ):
         super(yolov3, self).__init__()
         self.lb_noobj = lb_noobj
@@ -42,7 +45,9 @@ class yolov3(nn.Module):
         else:
             cfg = os.path.join(self.pwd, "yolov3.cfg")
             self.layer_dict = self.get_default_config(cfg, classes=classes)
-        self.make_nn(debug=debug)
+        self.use_focal_loss = use_focal_loss
+        self.device = device
+        
         self.loss_names = ["x", "y", "w", "h",
                            "object", "class", "recall", "precision"]
         self.seen = 0
@@ -51,6 +56,8 @@ class yolov3(nn.Module):
         self.losses_log = []
         self.model_name = model_name
         
+        self.make_nn(debug=debug)
+        
         ## check pretrained file
         files = os.listdir(self.pwd)
         if not 'yolov3.weights' in files:
@@ -58,6 +65,8 @@ class yolov3(nn.Module):
             gdown.download(path_to_sota, os.path.join(self.pwd, 'yolov3.weights'), quiet=False)
         else:
             print('Already download pretrained weights')
+
+        
 
     def make_conv(self, module, block, prev, it, debug=True):
         try:
@@ -152,8 +161,8 @@ class yolov3(nn.Module):
 
         num_classes = int(layer['classes'])
         num_anchors = int(layer['num'])
-        yolo = yoloHeadv3(anchors, num_classes, img_size=int(
-            self.hyperparameters['width']),
+        yolo = yoloHeadv3(anchor=anchors, num_classes=num_classes, img_size=int(
+            self.hyperparameters['width']), use_focal_loss=self.use_focal_loss, device=self.device ,
             lb_noobj=self.lb_noobj, lb_obj=self.lb_obj, lb_class=self.lb_class, lb_pos=self.lb_pos)
         module.add_module(f"yolo_detection_{it}", yolo)
         if debug:

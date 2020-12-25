@@ -81,13 +81,16 @@ def train(
     warmup_scheduler = None
 
     ############### Loading Model ####################
+    device = 'cuda' if not args.use_cpu else 'cpu'
     if not args.cfg and modelLoaderFunc is None:
         print(f'Succesfully load model with default config')
         yolo = create_model(num_classes=args.num_class,
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_pos=args.lb_pos
+                            lb_pos=args.lb_pos,
+                            device=device,
+                            use_focal_loss=args.use_focal_loss
                             )
     elif args.cfg == 'default':
         f = os.path.join(pwd_path, 'config', 'yolov3.cfg')
@@ -96,7 +99,9 @@ def train(
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_pos=args.lb_pos
+                            lb_pos=args.lb_pos,
+                            device=device,
+                            use_focal_loss=args.use_focal_loss
                             )
     else:
         print(f"Succesfully load model with custom config at '{args.cfg}' ")
@@ -104,7 +109,9 @@ def train(
                             lb_noobj=args.lb_noobj,
                             lb_obj=args.lb_obj,
                             lb_class=args.lb_clss,
-                            lb_pos=args.lb_pos
+                            lb_pos=args.lb_pos,
+                            device=device,
+                            use_focal_loss=args.use_focal_loss
                             )
     if not modelLoaderFunc is None:
         print('Load new architect with yoloHead ..')
@@ -112,7 +119,9 @@ def train(
             lb_noobj = args.lb_noobj,
             lb_obj = args.lb_obj,
             lb_class = args.lb_clss,
-            lb_pos = args.lb_pos
+            lb_pos = args.lb_pos,
+            device=device,
+            use_focal_loss=args.use_focal_loss
             )
         print('Done, successfully loading model')
     
@@ -185,7 +194,7 @@ def train(
                         each.requires_grad = False
             print(f'Freezed all layers excludings {grads_layer}')
         if os.path.exists(log_file):
-            old = datetime.now().strftime("%M%H_%d%m%Y") + "_old"
+            old = datetime.now().strftime("%S%M%H_%d%m%Y") + "_old"
             shutil.copytree(log_file, os.path.join(
                 log_folder, old), False, None)  # copy to old folder
             shutil.rmtree(log_file, ignore_errors=True)  # remove log

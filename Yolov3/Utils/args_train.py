@@ -117,6 +117,11 @@ def get_args():
                         default=1.0, type=float,
                         dest='lb_clss',
                         help='lambda class lossfunciton (1.)')
+    # use focal loss function
+    optional.add_argument('--focal', action='store_true',
+                          default=False,
+                          dest='use_focal_loss',
+                          help='use focal loss in clasification (false)')
     args = parser.parse_args()
 
     return args

@@ -26,7 +26,7 @@ class custom_aug:
                     # scale images to 80-120% of their size, individually per axis
                     scale={"x": (0.9, 1.25), "y": (0.9, 1.25)},
                     # translate by -20 to +20 percent (per axis)
-                    translate_px={"x": (-10, 10), "y": (-10, 10) },
+                    #translate_px={"x": (-10, 10), "y": (-10, 10) },
                     translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                     rotate=(-30, 30),  # rotate by -45 to +45 degrees
                     shear=(-5, 5),  # shear by -16 to +16 degrees

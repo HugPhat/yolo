@@ -13,7 +13,9 @@ def create_model(num_classes,
         lb_noobj = 1.0,
         lb_obj=5.0,
         lb_class=2.0,
-        lb_pos=1.0
+        lb_pos=1.0,
+        device='cuda',
+        use_focal_loss=False
     ):
     """[Create yolo model]
 
@@ -29,10 +31,16 @@ def create_model(num_classes,
                       lb_noobj=lb_noobj,
                       lb_obj=lb_obj,
                       lb_class=lb_class,
-                      lb_pos=lb_pos)
+                      lb_pos=lb_pos,
+                      device=device,
+                      use_focal_loss=use_focal_loss
+                      ).to(device=device)
     else:
         return yolov3(use_custom_config=default_cfg, 
                       lb_noobj=lb_noobj,
                       lb_obj=lb_obj,
                       lb_class=lb_class,
-                      lb_pos=lb_pos)
+                      lb_pos=lb_pos,
+                      device=device,
+                      use_focal_loss=use_focal_loss
+                      ).to(device=device)
