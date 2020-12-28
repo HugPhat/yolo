@@ -24,7 +24,7 @@ class custom_aug:
                 )),
                 sometimes(iaa.Affine(
                     # scale images to 80-120% of their size, individually per axis
-                    scale={"x": (0.9, 1.1), "y": (0.9, 1.1)},
+                    scale={"x": (0.5, 1.3), "y": (0.5, 1.5)},
                     # translate by -20 to +20 percent (per axis)
                     translate_px={"x": (-10, 10), "y": (-10, 10) },
                     #translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},

@@ -104,7 +104,8 @@ class yoloHeadv3(nn.Module):
         h = predict[..., 3]
 
         conf = torch.sigmoid(predict[...,   4])
-        clss = torch.sigmoid(predict[...,   5:])
+        #clss = torch.sigmoid(predict[...,   5:])
+        clss = predict[...,   5:]
         #print(clss)
         coor_x = torch.arange(numGrids).repeat(numGrids, 1).view(
             [1, 1, numGrids, numGrids]).type(FloatTensor)
@@ -123,9 +124,10 @@ class yoloHeadv3(nn.Module):
         pred_boxes[..., 3] = torch.exp(h).clamp(max=1E3) * anchor_y
 
         if torch.isnan(conf).any():
-            print(f'predict { predict } size {predict.size()}')
-            print(clss)
-            print(predict[..., 4])
+            print(f'predict size {predict.size()}')
+            print(f'X  size {X.size()}')
+            #print(clss)
+            #print(predict[..., 4])
         if isTrain:
             #if x.is_cuda:
             #    self.mse_loss.cuda()
