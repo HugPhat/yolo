@@ -60,11 +60,14 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpo
             #desc += str(each/batch_index) + " |"
             temp.update({'layer_' + str(i) : each/batch_index})
             if print_now:
-                if mode == 'val':
-                    writer.add_scalar(k + '_layer_' + str(i) + "/" + mode , each/ batch_index, epoch)
+                if writer:
+                    if mode == 'val':
+                        writer.add_scalar(k + '_layer_' + str(i) + "/" + mode , each/ batch_index, epoch)
+                    else:
+                        writer.add_scalar(
+                            k + '_layer_' + str(i) + "/" + mode, each / batch_index, checkpoint_index)
                 else:
-                    writer.add_scalar(
-                        k + '_layer_' + str(i) + "/" + mode, each / batch_index, checkpoint_index)
+                    pass 
 
     return loss_accumulate, desc
 
@@ -165,8 +168,10 @@ def train_module(
                 epoch_pbar.update(1)
         total= sum(loss_accumulate['total']) / (len(valLoader))
         if total < best_loss_value:
-            save_model(model=model, path=path, name=best_current_model, 
-            epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
-        save_model(model=model, path=path, name="current_checkpoint.pth",
+            if not path is None:
+                save_model(model=model, path=path, name=best_current_model, 
+                    epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
+        if not path is None:
+            save_model(model=model, path=path, name="current_checkpoint.pth",
                    epoch=epoch, optimizer=optimizer, optim_name=optimizer_name, lr_rate=lr_rate, wd=wd, m=momen, lr_scheduler=lr_scheduler)
         

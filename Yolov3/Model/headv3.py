@@ -44,7 +44,7 @@ class yoloHeadv3(nn.Module):
         self.mse_loss = nn.MSELoss().to(device=device)
         self.bce_loss = nn.BCELoss().to(device=device)
         self.class_loss = nn.CrossEntropyLoss().to(
-            device=device) if not use_focal_loss else focal_loss(ignore_index=0, device=device)
+            device=device) if not use_focal_loss else focal_loss( device=device)
         if  use_focal_loss:
             print('Compute classification loss by ',self.class_loss.__class__.__name__)
         self.confidence_points = [0.5, 0.75, 0.85]

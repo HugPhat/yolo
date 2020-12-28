@@ -47,7 +47,7 @@ def template_dataLoaderFunc(dataSet: yoloCoreDataset, args, labels):
             labels.pop(-1)
 
     trainLoader = DataLoader(dataSet(path=args.data, labels=labels, max_objects=18, split=args.split,
-                                           debug=False, draw=False, argument=False, is_train=True),
+                                           debug=False, draw=False, argument=True, is_train=True),
                              batch_size=args.batch_size,
                              shuffle=True,
                              num_workers=args.num_worker,
