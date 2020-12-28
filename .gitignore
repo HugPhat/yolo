@@ -138,4 +138,9 @@ dmypy.json
 #yolo weight
 *.weights
 Experiments/voc2012/dummy
+Experiments/simple/dummy
 Experiments/voc2012/checkpoint/*
+Experiments/simple/checkpoint/*
+
+Experiments/voc2012/config/bboxes.json
+Experiments/voc2012/simple/bboxes.json

@@ -1,0 +1,8 @@
+{
+    "objects": {
+        "background": 0,
+        "cat": 1189,
+        "dog": 2498
+    },
+    "sum": 3687
+}

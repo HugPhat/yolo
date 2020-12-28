@@ -127,7 +127,7 @@ class yoloCoreDataset(Dataset):
         pad = ((pad1, pad2), (0, 0), (0, 0)) if h <= w else (
             (0, 0), (pad1, pad2), (0, 0))
         # Add padding
-        input_img = np.pad(img.copy(), pad, 'constant', constant_values=150)
+        input_img = np.pad(img.copy(), pad, 'constant', constant_values=0)
         
         padded_h, padded_w, _ = input_img.shape
 

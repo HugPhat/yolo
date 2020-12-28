@@ -11,17 +11,17 @@ from Yolov3.Dataset.dataset import yoloCoreDataset, cv2, np
 
 
 
-class VOC_data(yoloCoreDataset):
+class simple_data(yoloCoreDataset):
     def __init__(self, path, labels, 
                     img_size=416,  # fixed size image
                     debug=False,
                     argument=True,
                     draw=False,
-                    max_objects=15,
+                    max_objects=3,
                     is_train=True,
                     split = None
                 ):
-        super(VOC_data, self).__init__(path, labels,
+        super(simple_data, self).__init__(path, labels,
                                        debug=debug, is_train=is_train, split=split)
         self.debug = debug
         self.argument = argument
@@ -30,40 +30,35 @@ class VOC_data(yoloCoreDataset):
         
 
     def InitDataset(self):
-        """Use preset data set in './ImageSets/Main' contains [train.txt, val.txt]
-            +data root:
-                + /ImageSets/Main:
-                                + train.txt
-                                + val.txt
-                + Annotations
-                + JPEGImages
         """
-        annotations = "Annotations"
-        jpegimages = "JPEGImages"
+            +data root:
+                + annotations
+                + images
+        """
+        annotations = "annotations"
+        jpegimages = "images"
+
+        
+        images_path = [os.path.split(each)[-1].split('.')[0] 
+                        for each in os.listdir(os.path.join(self.path, jpegimages))]
+        n_imgs = len(images_path)
         if self.split is None:
-            train_txt = 'ImageSets/Main/train.txt'
-            val_txt = 'ImageSets/Main/val.txt'
-            images_path = train_txt if (self.is_train) else val_txt        
-            images_path = readTxt(os.path.join(self.path, images_path))
-            images_path.pop(-1)
-            
+            ratio = int(n_imgs*0.8)
         elif self.split < 1. and self.split > 0:
-            trainval = 'ImageSets/Main/trainval.txt'
-            images_path = readTxt(os.path.join(self.path, trainval))
-            images_path.pop(-1)
-            n_imgs = len(images_path)
             ratio = int(n_imgs*self.split)
-            if self.is_train:
-                images_path = images_path[:ratio]
-            else:
-                images_path = images_path[ratio:]
         else:
-            raise f'Wrong split data {self.split}'
+            raise f'Invalid split ratio of data, must be in range [0,1] but got {self.split}'
+
+        if self.is_train:
+            images_path = images_path[:ratio]
+        else:
+            images_path = images_path[ratio:]
+
         # rawdata format: [path_2_image, path_2_xml]
         rawData = list()
         for each in images_path:
             xml = os.path.join(self.path, annotations, each + '.xml')
-            jpeg = os.path.join(self.path, jpegimages, each + '.jpg')
+            jpeg = os.path.join(self.path, jpegimages, each + '.png')
             rawData.append([jpeg, xml])
         return rawData
         
@@ -79,10 +74,10 @@ class VOC_data(yoloCoreDataset):
 if __name__ == '__main__':
     import torch
     labels = readTxt(os.path.join(PATH, 'config', 'class.names'))
-    path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\PASCALVOC\VOCdevkit\VOC2012"
+    path_2_root = r"E:\ProgrammingSkills\python\DEEP_LEARNING\DATASETS\simple_obj_detection\cat_dog"
     #path_2_root = r"D:\Code\Dataset\PASCAL-VOOC\VOCtrainval_11-May-2012\VOCdevkit\VOC2012"
 
-    voc = VOC_data(path= path_2_root,split=0.8, is_train=True, labels=labels, debug=True, draw=1, argument=True)
+    voc = simple_data(path= path_2_root,split=0.8, is_train=True, labels=labels, debug=True, draw=1, argument=True)
     for i, (inp, tar) in enumerate(voc):
         print('INP max {} min {}'.format(torch.max(inp), torch.min(inp)))
         print('TAR max {} min {}'.format(torch.max(tar), torch.min(tar)))

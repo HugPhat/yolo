@@ -1,0 +1,26 @@
+{
+    "objects": {
+        "aeroplane": 470,
+        "background": 0,
+        "bicycle": 410,
+        "bird": 592,
+        "boat": 508,
+        "bottle": 749,
+        "bus": 317,
+        "car": 1191,
+        "cat": 609,
+        "chair": 1457,
+        "cow": 355,
+        "diningtable": 373,
+        "dog": 768,
+        "horse": 377,
+        "motorbike": 375,
+        "person": 5019,
+        "pottedplant": 557,
+        "sheep": 509,
+        "sofa": 399,
+        "train": 327,
+        "tvmonitor": 412
+    },
+    "sum": 15774
+}
