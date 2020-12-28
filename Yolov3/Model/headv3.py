@@ -1,3 +1,4 @@
+from torchvision import transforms
 from torch.autograd import Variable
 import torch.nn as nn
 import torch
@@ -205,3 +206,62 @@ class yoloHeadv3(nn.Module):
             )
 
             return output
+
+from PIL import Image
+from Yolov3.Utils.utils import non_max_suppression
+import numpy as np 
+
+def detect_image(model, img, classes=80, conf_thres=0.8, nms_thres=0.4, img_size=416, cuda=True):
+    # scale and pad image
+    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+
+    if isinstance(img, str):
+        img = Image.open(str)
+        w,h = img.size
+    elif isinstance(img, np.ndarray):
+        h, w = img.shape[:2]
+        img = Image.fromarray(img)
+    else:
+        try:
+            w, h = img.size
+        except Exception as e:
+            raise 'Error {} , invalid image type '.format(e.args[-1])
+
+    ratio = min(img_size/w, img_size/h)
+    imw = round(w * ratio)
+    imh = round(h * ratio)
+    img_transforms = transforms.Compose([
+        transforms.Resize((imh, imw)),
+        transforms.Pad((max(int((imh-imw)/2), 0), max(int((imw-imh)/2), 0),
+                        max(int((imh-imw)/2), 0), max(int((imw-imh)/2), 0)),
+                       (0, 0, 0)), transforms.ToTensor(),
+        ])
+    image_tensor = img_transforms(img).float()
+    image_tensor = image_tensor.unsqueeze_(0)
+    input_img = Variable(image_tensor.type(Tensor))
+    with torch.no_grad():
+        detections = model(input_img)
+        detections = non_max_suppression(
+            detections, classes, conf_thres, nms_thres)
+    img = np.asarray(img)
+    try:
+        pad_x = max(img.shape[0] - img.shape[1], 0) * \
+            (img_size / max(img.shape))
+        pad_y = max(img.shape[1] - img.shape[0], 0) * \
+            (img_size / max(img.shape))
+        unpad_h = img_size - pad_y
+        unpad_w = img_size - pad_x
+        detections = detections[0]
+        result = detections
+        result[..., 3] = ((detections[..., 3] - pad_y //
+                           2) / unpad_h) * img.shape[0]
+        result[..., 2] = ((detections[..., 2] - pad_x //
+                           2) / unpad_w) * img.shape[1]
+        result[..., 1] = ((detections[..., 1] - pad_y //
+                           2) / unpad_h) * img.shape[0]
+        result[..., 0] = ((detections[..., 0] - pad_x //
+                           2) / unpad_w) * img.shape[1]
+        result = result.data.cpu().tolist()
+        return result
+    except:
+        return None
