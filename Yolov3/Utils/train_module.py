@@ -55,7 +55,7 @@ def unpack_data_loss_function(loss_accumulate, loss, writer, batch_index,checkpo
     for (k, v) in loss_accumulate.items():
         temp = {}
         if not k in ['loss_x', 'loss_y', 'loss_w', 'loss_h']:
-            desc += '|' + str(k) + ": " + str(round(sum(v)/ (batch_index *3), 3))
+            desc += '|' + str(k) + ": " + str(round(sum(v)/ (batch_index * len(v)), 3))
         for i, each in enumerate(v):
             #desc += str(each/batch_index) + " |"
             temp.update({'layer_' + str(i) : each/batch_index})
