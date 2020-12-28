@@ -15,17 +15,19 @@ import gdown
 
 path_to_sota = "https://drive.google.com/uc?id=1x9irVeBbcP09FtZWJMjlIPteZwxJgSzV"
 
+
 class skip_connection(nn.Module):
     def __init__(self):
         super(skip_connection, self).__init__()
+
 
 class yolov3(nn.Module):
     def __init__(self,
                  model_name='yolov3',
                  img_size=416,
                  debug=False,
-                 classes = 21,
-                 use_custom_config =False ,
+                 classes=21,
+                 use_custom_config=False,
                  lb_noobj=1.0,
                  lb_obj=5.0,
                  lb_class=2.0,
@@ -47,26 +49,25 @@ class yolov3(nn.Module):
             self.layer_dict = self.get_default_config(cfg, classes=classes)
         self.use_focal_loss = use_focal_loss
         self.device = device
-        
+
         self.loss_names = ["x", "y", "w", "h",
                            "object", "class", "recall", "precision"]
         self.seen = 0
         self.header = np.array([0, 0, 0, self.seen, 0])
-        
+
         self.losses_log = []
         self.model_name = model_name
-        
+
         self.make_nn(debug=debug)
-        
+
         ## check pretrained file
         files = os.listdir(self.pwd)
         if not 'yolov3.weights' in files:
             print('Download darknet sota weights')
-            gdown.download(path_to_sota, os.path.join(self.pwd, 'yolov3.weights'), quiet=False)
+            gdown.download(path_to_sota, os.path.join(
+                self.pwd, 'yolov3.weights'), quiet=False)
         else:
             print('Already download pretrained weights')
-
-        
 
     def make_conv(self, module, block, prev, it, debug=True):
         try:
@@ -162,7 +163,7 @@ class yolov3(nn.Module):
         num_classes = int(layer['classes'])
         num_anchors = int(layer['num'])
         yolo = yoloHeadv3(anchor=anchors, num_classes=num_classes, img_size=int(
-            self.hyperparameters['width']), use_focal_loss=self.use_focal_loss, device=self.device ,
+            self.hyperparameters['width']), use_focal_loss=self.use_focal_loss, device=self.device,
             lb_noobj=self.lb_noobj, lb_obj=self.lb_obj, lb_class=self.lb_class, lb_pos=self.lb_pos)
         module.add_module(f"yolo_detection_{it}", yolo)
         if debug:
@@ -263,7 +264,7 @@ class yolov3(nn.Module):
                 block[key.rstrip()] = value.lstrip()
         blocks.append(block)
         return blocks
-    
+
     def get_default_config(self, path, classes):
         with open(path, 'r') as cfg:
             lines = cfg.read().split('\n')
@@ -287,14 +288,17 @@ class yolov3(nn.Module):
                     value = str((classes + 5) * 3)
                 elif value == "$classes":
                     value = str(classes)
-                    
+
                 block[key.rstrip()] = value.lstrip()
         blocks.append(block)
-        
+
         return blocks
+
     def load_pretrained_by_num_class(self, path=None):
-        sota = yolov3()
-        sota._load_weight(weights_path= os.path.join(self.pwd, 'yolov3.weights')) if path is None else sota._load_weight(path)
+        print('load coco sota')
+        sota = yolov3(classes=80)
+        sota._load_weight(weights_path=os.path.join(
+            self.pwd, 'yolov3.weights')) if path is None else sota._load_weight(path)
         sota_state_dict = sota.state_dict()
         model_state_dict = self.state_dict()
 
@@ -304,11 +308,10 @@ class yolov3(nn.Module):
             t = 0
             for l in layer_before_yolo:
                 if l in _K:
-                    t+=1
-            if not t: 
-                model_state_dict.update({k : v})
+                    t += 1
+            if not t:
+                model_state_dict.update({k: v})
         self.load_state_dict(model_state_dict)
-        
 
     def _load_weight(self, weights_path='yolov3.weights'):
 

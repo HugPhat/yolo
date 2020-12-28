@@ -15,7 +15,7 @@ class custom_aug:
             [
                 # apply the following augmenters to most images
                 iaa.Fliplr(0.5),  # horizontally flip 50% of all images
-                iaa.Flipud(0.1),  # vertically flip 20% of all images
+                iaa.Flipud(0.15),  # vertically flip 20% of all images
                 # crop images by -5% to 10% of their height/width
                 sometimes(iaa.CropAndPad(
                     percent=(0, 0.15),
@@ -24,10 +24,10 @@ class custom_aug:
                 )),
                 sometimes(iaa.Affine(
                     # scale images to 80-120% of their size, individually per axis
-                    scale={"x": (0.9, 1.25), "y": (0.9, 1.25)},
+                    scale={"x": (0.9, 1.1), "y": (0.9, 1.1)},
                     # translate by -20 to +20 percent (per axis)
-                    #translate_px={"x": (-10, 10), "y": (-10, 10) },
-                    translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+                    translate_px={"x": (-10, 10), "y": (-10, 10) },
+                    #translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
                     rotate=(-30, 30),  # rotate by -45 to +45 degrees
                     shear=(-25, 25),  # shear by -16 to +16 degrees
                     # use nearest neighbour or bilinear interpolation (fast)
@@ -42,19 +42,19 @@ class custom_aug:
                 iaa.SomeOf((0, 5),
                            [
                     # convert images into their superpixel representation
-                    sometimes(iaa.Superpixels(
-                        p_replace=(0, 1.0), n_segments=(20, 100))),
+                    #sometimes(iaa.Superpixels(
+                    #    p_replace=(0, 1.0), n_segments=(20, 100))),
                     iaa.OneOf([
                         # blur images with a sigma between 0 and 3.0
-                        iaa.GaussianBlur((0, 1.0)),
+                        iaa.GaussianBlur((0.9, 1.0)),
                         # blur image using local means with kernel sizes between 2 and 7
                         #iaa.AverageBlur(k=(1, 3)),
                         # blur image using local medians with kernel sizes between 2 and 7
                         #iaa.MedianBlur(k=(1, 3)),
                     ]),
-                    iaa.Sharpen(alpha=(0, 1.0), lightness=( 0.75, 1.)),  # sharpen images
-                    iaa.Emboss(alpha=(0.4, 0.8), strength=(
-                        0.4, 0.8)),  # emboss images
+                    
+                    #iaa.Emboss(alpha=(0.4, 0.8), strength=(
+                    #    0.4, 0.8)),  # emboss images
                     # search either for all edges or for directed edges,
                     # blend the result with the original image using a blobby mask
                     iaa.SimplexNoiseAlpha(iaa.OneOf([
@@ -64,18 +64,13 @@ class custom_aug:
                     # add gaussian noise to images
                     iaa.AdditiveGaussianNoise(loc=0, scale=(
                         0.0, 0.05*255), per_channel=0.5),
-                    iaa.OneOf([
-                        # randomly remove up to 10% of the pixels
-                        iaa.Dropout((0.01, 0.04), per_channel=0.5),
-                        iaa.CoarseDropout((0.03, 0.1), size_percent=(
-                            0.02, 0.05), per_channel=0.2),
-                    ]),
+                    
                     # invert color channels
                     #iaa.Invert(1, per_channel=True),
                     # change brightness of images (by -10 to 10 of original value)
                     iaa.Add((0.8, .1), per_channel=0.5),
                     # change hue and saturation
-                    #iaa.AddToHueAndSaturation((0, 1)),
+                    iaa.AddToHueAndSaturation((0, 1)),
                     # either change the brightness of the whole image (sometimes
                     # per channel) or change the brightness of subareas
                     iaa.OneOf([
@@ -83,18 +78,18 @@ class custom_aug:
                         iaa.FrequencyNoiseAlpha(
                             exponent=(-2, 0),
                             first=iaa.Multiply((0.6, 1.), per_channel=True),
-                            second=iaa.LinearContrast((0.6, 1.0))
+                            #second=iaa.LinearContrast((0.6, 1.0))
                         )
                     ]),
                     # improve or worsen the contrast
                     #iaa.LinearContrast((0.1, .60), per_channel=0.5),
-                    iaa.Grayscale(alpha=(0.1, .5)),
+                    #iaa.Grayscale(alpha=(0.1, .5)),
                     # move pixels locally around (with random strengths)
-                    sometimes(iaa.ElasticTransformation(
-                        alpha=(0.7, 1), sigma=0.1)),
+                    #sometimes(iaa.ElasticTransformation(
+                     #   alpha=(0.7, 1), sigma=0.1)),
                     # sometimes move parts of the image around
-                    sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))),
-                    sometimes(iaa.PerspectiveTransform(scale=(0.1, 0.5)))
+                    #sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))),
+                    #sometimes(iaa.PerspectiveTransform(scale=(0.1, 0.5)))
                 ],
                     random_order=True
                 )
